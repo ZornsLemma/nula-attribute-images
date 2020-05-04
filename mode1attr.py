@@ -1,4 +1,5 @@
 import PIL.Image
+import math
 import sys
 from collections import defaultdict
 
@@ -27,6 +28,36 @@ def expand_palette_for_colour_set(colour_set, palette):
     #print best_index, delta
     return best_index
 
+def colour_error(a, b):
+    p = image.getpalette()
+    return (math.pow(p[a*3+0] - p[b*3+0], 2) + 
+            math.pow(p[a*3+1] - p[b*3+1], 2) +
+            math.pow(p[a*3+2] - p[b*3+2], 2))
+
+def best_effort_palette_entry_lookup(pixel, palette_entry):
+    best_colour = None
+    for colour in palette_entry:
+        error = colour_error(pixel, colour)
+        if best_colour is None or error < best_error:
+            best_colour = colour
+            best_error = error
+    return best_colour, best_error
+
+def best_effort_pixel_representation(pixels, palette):
+    best_palette_entry = None
+    for i, palette_entry in enumerate(palette):
+        adjusted_pixels = []
+        total_error = 0
+        for pixel in pixels:
+            adjusted_pixel, error = best_effort_palette_entry_lookup(pixel, palette_entry)
+            adjusted_pixels.append(adjusted_pixel)
+            total_error += error
+        if best_palette_entry is None or total_error < best_total_error:
+            best_palette_entry = i
+            best_total_error = total_error
+            best_adjusted_pixels = adjusted_pixels
+    return best_palette_entry, best_adjusted_pixels
+
 
 
 if len(sys.argv) != 2:
@@ -41,6 +72,7 @@ assert ysize == 256
 our_colours = 16
 while True:
     image = original_image.convert(mode="P", dither=PIL.Image.FLOYDSTEINBERG, palette=PIL.Image.ADAPTIVE, colors=our_colours)
+    image.save('zo-%d.png' % (our_colours,))
 
     data = list(image.getdata())
     hist = defaultdict(int)
@@ -85,3 +117,16 @@ while True:
     if our_colours_used == our_colours:
         break
     our_colours = our_colours_used
+
+
+pixel_map = image.load()
+for y in range(0, ysize):
+    print y
+    for x in range(0, xsize, 3):
+        pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
+        palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette)
+        pixel_map[x,y] = adjusted_pixels[0]
+        pixel_map[x+1,y] = adjusted_pixels[1]
+        pixel_map[x+2,y] = adjusted_pixels[2]
+
+image.save("z.png")
