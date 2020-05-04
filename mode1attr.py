@@ -6,29 +6,6 @@ from collections import defaultdict
 
 
 
-def find_colour_set_in_palette(colour_set, palette):
-    for i, palette_entry in enumerate(palette):
-        if all(colour in palette_entry for colour in colour_set):
-            return i
-    return None
-
-def expand_palette_for_colour_set(colour_set, palette):
-    best_index = None
-    best_delta = None
-    # We can't have more than four colours in a palette entry. We prefer to add
-    # as few colours as possible to a palette entry to increase flexibility for
-    # later additions.
-    for i, palette_entry in enumerate(palette):
-        delta = len(colour_set - palette_entry)
-        if len(palette_entry) + delta <= 4:
-            if best_index is None or delta < best_delta:
-                best_index = i
-                best_delta = delta
-    if best_index is not None:
-        palette[best_index] = palette[best_index].union(colour_set)
-    #print best_index, delta
-    return best_index
-
 def colour_error(a, b):
     p = image.getpalette()
     return (math.pow(p[a*3+0] - p[b*3+0], 2) + 
@@ -43,6 +20,12 @@ def best_effort_palette_entry_lookup(pixel, palette_entry):
             best_colour = colour
             best_error = error
     return best_colour, best_error
+
+def palette_entry_average_error(colour, palette_entry):
+    if len(palette_entry) == 0:
+        # This is very unlikely, but possible
+        return 0
+    return sum(colour_error(colour, palette_colour) for palette_colour in palette_entry)/len(palette_entry)
 
 def best_effort_pixel_representation(pixels, palette):
     best_palette_entry = None
@@ -86,40 +69,85 @@ while True:
     data = list(image.getdata())
     hist = defaultdict(int)
     for i in range(0, len(data), 3):
-        hist[tuple(set(data[i:i+3]))] += 1
+        pixel_triple = data[i:i+3]
+        # We consider all three "sub-pairs" of pixels; this is an attempt to identify
+        # colour pairs which often occur together. If a pair of pixels are the same
+        # colour, this doesn't count; in the extreme case where all three pixels are the
+        # same we don't have to worry (because we will arrange for every colour to appear
+        # *somewhere* in the palette) and in the case of two pixels of one colour and
+        # one pixel of another we will attach 2/3 of the maximum weight to it for the
+        # two non-similar pairs.
+        def do_pair(i, j):
+            if pixel_triple[i] != pixel_triple[j]:
+                hist[tuple(set([pixel_triple[i], pixel_triple[j]]))] += 1
+        do_pair(0, 1)
+        do_pair(0, 2)
+        do_pair(1, 2)
     hist2 = sorted(hist.items(), key=lambda x: x[1], reverse=True)
 
     #for hist_entry in hist2:
     #    print "%s\t%s" % (hist_entry[0], hist_entry[1])
+    #assert False
 
-    palette = [set()]*4
+    palette = [set() for i in range(0, 4)]
 
-    # Work through the colour sets in order from most common to least common.
-    palette_index_for_colour_set = defaultdict(int)
+    # Work through the colour pairs in order from most common to least common.
     for i, hist_entry in enumerate(hist2):
         colour_set = set(hist_entry[0])
-        #print "%s\t%s" % (colour_set, hist_entry[1])
-        if tuple(colour_set) in palette_index_for_colour_set:
-            # We can perfectly display this set of colours, and we already have it in
-            # our dictionary.
+        assert len(colour_set) == 2
+        palette_union = set.union(*palette)
+        if len(palette_union) >= 15:
+            # Just a minor optimisation; if we've already got 15 colours in the
+            # palette there's no choice to be made any more.
+            break
+        if colour_set.issubset(palette_union):
+            # Both of these colours are already in the palette, so we can't add
+            # them again (whether or not this allows this pair to be represented
+            # or not).
             pass
         else:
-            palette_index = find_colour_set_in_palette(colour_set, palette)
-            if palette_index is not None:
-                # We can perfectly display this set of colours, but it's not in our
-                # dictionary yet.
-                palette_index_for_colour_set[tuple(colour_set)] = palette_index
+            intersection = colour_set.intersection(palette_union)
+            if len(intersection) == 1:
+                # One of these colours is already in the palette. If there's space
+                # in its palette entry for the other, add it. If not, we can't
+                # represent this pair properly so do nothing.
+                existing_colour = tuple(intersection)[0]
+                new_colour = tuple(colour_set - intersection)[0]
+                for palette_entry in palette:
+                    if existing_colour in palette_entry:
+                        if len(palette_entry) < 4:
+                            palette_entry.add(new_colour)
+                        break
             else:
-                # We can't display this set of colours using the palette; can we expand
-                # the palette to include it?
-                palette_index = expand_palette_for_colour_set(colour_set, palette)
-                if palette_index is None:
-                    # We can't expand the palette to include it perfectly.
-                    #print colour_set
-                    #print palette
-                    #print palette_index
-                    #assert False
-                    pass
+                # Neither of these colours is already in the palette. Pick one of
+                # the palette entries with most free space and add the pair there.
+                # If no entry has space for a pair, just ignore this pair.
+                emptiest_palette_entry = None
+                for palette_entry in palette:
+                    if len(palette_entry) <= 2 and (emptiest_palette_entry is None or len(palette_entry) < emptiest_palette_entry_len):
+                        emptiest_palette_entry = palette_entry
+                        emptiest_palette_entry_len = len(palette_entry)
+                if emptiest_palette_entry is not None:
+                    emptiest_palette_entry.update(colour_set)
+        print colour_set, palette
+
+    print "A", palette
+
+    # If some colours haven't yet been added to the palette, add them. There probably won't
+    # be much wiggle room left, but we try to put these isolated colours with similar ones.
+    for i in range(0, 16):
+        if i not in palette_union:
+            best_palette_entry = None
+            for palette_entry in palette:
+                if len(palette_entry) < 4:
+                    error = palette_entry_average_error(i, palette_entry)
+                    if best_palette_entry is None or error < best_error:
+                        best_palette_entry = palette_entry
+                        best_error = error
+            assert best_palette_entry is not None
+            best_palette_entry.add(i)
+
+    print "Q", palette
 
     break
     print our_colours, palette
