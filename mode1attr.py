@@ -1,6 +1,6 @@
 import PIL.Image
-import hitherdither
 import math
+import subprocess
 import sys
 from collections import defaultdict
 
@@ -73,9 +73,14 @@ assert ysize == 256
 our_colours = 16
 while True:
     #image = original_image.convert(mode="P", dither=PIL.Image.FLOYDSTEINBERG, palette=PIL.Image.ADAPTIVE, colors=our_colours)
-    image_palette = hitherdither.palette.Palette.create_by_median_cut(original_image, n=our_colours)
-    image = hitherdither.diffusion.error_diffusion_dithering(original_image, image_palette)
-    image.save('zo-%d.png' % (our_colours,))
+    #
+    #image_palette = hitherdither.palette.Palette.create_by_median_cut(original_image, n=our_colours)
+    #image = hitherdither.diffusion.error_diffusion_dithering(original_image, image_palette)
+    #
+    #image.save('zo-%d.png' % (our_colours,))
+    result = subprocess.call(["convert", sys.argv[1], "-colors", str(our_colours), "zo-%d.png" % (our_colours,)])
+    assert result == 0
+    image = PIL.Image.open("zo-%d.png" % (our_colours,))
 
     data = list(image.getdata())
     hist = defaultdict(int)
