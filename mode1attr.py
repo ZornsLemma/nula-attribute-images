@@ -78,9 +78,10 @@ while True:
     #image = hitherdither.diffusion.error_diffusion_dithering(original_image, image_palette)
     #
     #image.save('zo-%d.png' % (our_colours,))
-    result = subprocess.call(["convert", sys.argv[1], "-colors", str(our_colours), "zo-%d.png" % (our_colours,)])
-    assert result == 0
-    image = PIL.Image.open("zo-%d.png" % (our_colours,))
+    #result = subprocess.call(["convert", sys.argv[1], "-colors", str(our_colours), "zo-%d.png" % (our_colours,)])
+    #assert result == 0
+    #image = PIL.Image.open("zo-%d.png" % (our_colours,))
+    image = original_image
 
     data = list(image.getdata())
     hist = defaultdict(int)
@@ -120,6 +121,7 @@ while True:
                     #assert False
                     pass
 
+    break
     print our_colours, palette
     our_colours_used = len(set.union(*palette))
     if our_colours_used == our_colours:
