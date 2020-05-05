@@ -1,4 +1,6 @@
 import PIL.Image
+import PIL.ImageDraw
+import PIL.ImageFont
 import math
 import subprocess
 import sys
@@ -44,6 +46,30 @@ def best_effort_pixel_representation(pixels, palette):
             best_total_error = total_error
             best_adjusted_pixels = adjusted_pixels
     return best_palette_group, best_adjusted_pixels
+
+def distance(a, b):
+    # TODO: Do we need to bother taking square root here?
+    return math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2)
+
+def visualise_palette(palette, filename):
+    cell_size = 64
+    output = PIL.Image.new("RGB", (4*cell_size, 4*cell_size))
+    image_palette = image.getpalette()
+    d = PIL.ImageDraw.ImageDraw(output)
+    font = PIL.ImageFont.truetype("Arial.ttf", 18)
+    colour_black = (0, 0, 0)
+    colour_white = (255, 255, 255)
+    for y, palette_group in enumerate(palette):
+        for x, colour in enumerate(palette_group):
+            colour_rgb = (image_palette[colour*3+0], image_palette[colour*3+1], image_palette[colour*3+2])
+            d.rectangle((x*cell_size, y*cell_size, (x+1)*cell_size, (y+1)*cell_size), fill=colour_rgb, outline=colour_rgb)
+            if distance(colour_rgb, colour_white) < distance(colour_rgb, colour_black):
+                font_colour = colour_black
+            else:
+                font_colour = colour_white
+            font_size = font.getsize(str(colour))
+            d.text((x*cell_size + (cell_size-font_size[0])/2, y*cell_size + (cell_size-font_size[1])/2), str(colour), font=font)
+    output.show() # TODO: we don't currently use the provided filename...
 
 
 
@@ -152,8 +178,8 @@ for i in range(0, len(data), 3):
     do_pair(1, 2)
 hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
 
-#for hist_entry in hist:
-#    print "%s\t%s" % (hist_entry[0], hist_entry[1])
+for hist_entry in hist:
+    print "%s\t%s" % (hist_entry[0], hist_entry[1])
 #assert False
 
 palette = [set() for i in range(0, 4)]
@@ -217,7 +243,8 @@ for i in range(0, 16):
                     best_error = error
         assert best_palette_group is not None
         best_palette_group.add(i)
-#print "Final palette:", palette
+print "Final palette:", palette
+visualise_palette(palette, "zpal.png")
 
 # We need to renumber the palette because the 0th palette group has to contain colours
 # 0-3, the 1st 4-7 and so on.
