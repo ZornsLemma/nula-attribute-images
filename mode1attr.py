@@ -1,4 +1,5 @@
 import PIL.Image
+import os.path
 import math
 import subprocess
 import sys
@@ -157,14 +158,57 @@ while True:
     our_colours = our_colours_used
 
 
+bbc_colour_map = [None]*16
+bbc_colour = 0
+for palette_entry in palette:
+    palette_entry_tuple = tuple(palette_entry)
+    for original_colour in palette_entry_tuple:
+        bbc_colour_map[original_colour] = bbc_colour
+        bbc_colour += 1
+
+bbc_filename = os.path.splitext(os.path.basename(sys.argv[1]))[0] + ".bbc"
+bbc_image = open(bbc_filename, "wb")
+
+# Write the palette out
+for original_colour in range(0, 16):
+    bbc_colour = bbc_colour_map[original_colour]
+    p = image.getpalette()
+    r = p[original_colour*3+0] >> 4
+    g = p[original_colour*3+1] >> 4
+    b = p[original_colour*3+2] >> 4
+    print bbc_colour, r, g, b
+    bbc_image.write(bytearray([(bbc_colour<<4) | r, (g<<4) | b]))
+
 pixel_map = image.load()
-for y in range(0, ysize):
-    print y
+for y_block in range(0, ysize, 8):
+    print y_block
     for x in range(0, xsize, 3):
-        pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
-        palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette)
-        pixel_map[x,y] = adjusted_pixels[0]
-        pixel_map[x+1,y] = adjusted_pixels[1]
-        pixel_map[x+2,y] = adjusted_pixels[2]
+        for y in range(y_block, y_block+8):
+            pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
+            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette)
+            pixel_map[x,y] = adjusted_pixels[0]
+            pixel_map[x+1,y] = adjusted_pixels[1]
+            pixel_map[x+2,y] = adjusted_pixels[2]
+            assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
+            assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
+            attribute_value = bbc_colour_map[adjusted_pixels[0]]/4
+            pixel2 = bbc_colour_map[adjusted_pixels[0]] % 4
+            pixel1 = bbc_colour_map[adjusted_pixels[1]] % 4
+            pixel0 = bbc_colour_map[adjusted_pixels[2]] % 4
+            def adjust_bbc_pixel(n):
+                assert 0 <= n <= 3
+                return ((n & 2) << 3) | (n & 1)
+            bbc_byte = ((adjust_bbc_pixel(pixel2) << 3) |
+                        (adjust_bbc_pixel(pixel1) << 2) |
+                        (adjust_bbc_pixel(pixel0) << 1) |
+                        adjust_bbc_pixel(attribute_value))
+            if False:
+                if bbc_byte == 0x1e:
+                    print
+                    print adjusted_pixels[0], adjusted_pixels[1], adjusted_pixels[2]
+                    print attribute_value, adjust_bbc_pixel(attribute_value)
+                    print pixel2, pixel1, pixel0
+                    assert False
+            bbc_image.write(chr(bbc_byte))
 
 image.save("z.png")
