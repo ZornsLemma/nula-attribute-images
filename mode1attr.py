@@ -19,12 +19,21 @@ from collections import defaultdict
 # TODO: Use of assert for error checking is naughty
 
 
+def image_palette_rgb(colour):
+    p = image.getpalette()
+    # We discard the low nybble of the colour here because that's what we'll do in the
+    # final VideoNuLA image, and we want to make our judgements of colour distance using
+    # the actual colours, not the higher bit depth ones in the original palette.
+    return (p[colour*3+0] >> 4, p[colour*3+1] >> 4, p[colour*3+2] >> 4)
+
+def distance(a, b):
+    # TODO: Do we need to bother taking square root here?
+    return math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2)
 
 def colour_error(a, b):
-    p = image.getpalette()
-    return (math.pow(p[a*3+0] - p[b*3+0], 2) + 
-            math.pow(p[a*3+1] - p[b*3+1], 2) +
-            math.pow(p[a*3+2] - p[b*3+2], 2))
+    a_rgb = image_palette_rgb(a)
+    b_rgb = image_palette_rgb(b)
+    return distance(a_rgb, b_rgb)
 
 def best_effort_palette_group_lookup(desired_colour, palette_group):
     best_colour = None
@@ -57,10 +66,6 @@ def best_effort_pixel_representation(pixels, palette):
             best_adjusted_pixels = adjusted_pixels
     return best_palette_group, best_adjusted_pixels
 
-def distance(a, b):
-    # TODO: Do we need to bother taking square root here?
-    return math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2)
-
 def visualise_palette(palette, filename):
     cell_size = 64
     output = PIL.Image.new("RGB", (4*cell_size, 4*cell_size))
@@ -71,6 +76,7 @@ def visualise_palette(palette, filename):
     colour_white = (255, 255, 255)
     for y, palette_group in enumerate(palette):
         for x, colour in enumerate(palette_group):
+            # TODO: Should we use the 4-bit colours here (shifted back up to high nybble, of course)?
             colour_rgb = (image_palette[colour*3+0], image_palette[colour*3+1], image_palette[colour*3+2])
             d.rectangle((x*cell_size, y*cell_size, (x+1)*cell_size, (y+1)*cell_size), fill=colour_rgb, outline=colour_rgb)
             if distance(colour_rgb, colour_white) < distance(colour_rgb, colour_black):
@@ -79,7 +85,8 @@ def visualise_palette(palette, filename):
                 font_colour = colour_white
             font_size = font.getsize(str(colour))
             d.text((x*cell_size + (cell_size-font_size[0])/2, y*cell_size + (cell_size-font_size[1])/2), str(colour), font=font)
-    output.show() # TODO: we don't currently use the provided filename...
+    output.show() # TODO: temporary?
+    output.save(filename)
 
 
 
@@ -174,6 +181,46 @@ assert ysize == 256
 #   good approximation to those colours when they appear together with distinct
 #   colours.
 
+palette = [set() for i in range(0, 4)]
+if True: # SFTODO: Optional clustering palette generation as first step
+    from numpy import array
+    from scipy.cluster.vq import vq, kmeans, whiten
+    p = image.getpalette()
+    features = []
+    for colour in range(0, 16):
+        features.append(image_palette_rgb(colour))
+    features = array(features)
+    print features
+    whitened = whiten(features)
+    best_codebook = None
+    for k in range(2, 17):
+        codebook, distortion = kmeans(whitened, k)
+        if best_codebook is None or distortion < best_distortion:
+            best_codebook = codebook
+            best_distortion = distortion
+        print k, distortion
+        if k == 6:
+            break # SFTODO TEMP HACK - CURRENT CODE IS SILLY THO BECAUSE 16 GROUPS WILL ALWAYS GIVE BEST (0) DISTORTION!
+    print best_codebook
+    print distortion
+
+    colour_to_colour_group_map = {}
+    colour_group_to_colour_map = defaultdict(set)
+    for colour in range(0,16):
+        best_colour_group = None
+        for colour_group, centroid in enumerate(best_codebook):
+            d = distance(centroid, image_palette_rgb(colour))
+            if best_colour_group is None or d < best_distance:
+                best_colour_group = colour_group
+                best_distance = d
+        colour_to_colour_group_map[colour] = best_colour_group
+        colour_group_to_colour_map[best_colour_group].add(colour)
+    print colour_to_colour_group_map
+    print colour_group_to_colour_map
+
+
+    assert False
+
 # Examine the pixel triples in the image to build the histogram of colour pairs.
 data = list(image.getdata())
 hist = defaultdict(int)
@@ -191,8 +238,6 @@ hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
 for hist_entry in hist:
     print "%s\t%s" % (hist_entry[0], hist_entry[1])
 #assert False
-
-palette = [set() for i in range(0, 4)]
 
 # Work through the colour pairs in order from most common to least common.
 for hist_entry in hist:
