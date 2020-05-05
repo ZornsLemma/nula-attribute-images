@@ -2,7 +2,7 @@
 
 This is some experimental code to generate images for display on the BBC Micro using VideoNuLA's attribute modes. At the moment only the attribute variation on mode 1 is supported, i.e. a 240x256 colour mode with 16 colours split into four groups of four colours, with the restriction that each pixel triple on the screen can use any three colours from a single colour group. No on-the-fly palette reprogramming is being done so there's a single palette for the entire image.
 
-Some sample images are included and there's a crude shell script (make.sh) to build a slideshow disc image with some of them. The disc image is not checked into the repository so you'll either need to build it yourself or get it from the stardot thread where I'll upload it.
+Some sample images are included and there's a crude shell script (make.sh) to build a slideshow disc image with some of them. The disc image is not checked into the repository so you'll either need to build it yourself or get it from the stardot thread (https://stardot.org.uk/forums/viewtopic.php?f=2&t=19282) where I'll upload it.
 
 I've only been able to test this on b-em as I don't have any real hardware, but it will probably work. :-) The images should look slightly better on real hardware as b-em's attribute mode pixels are unevenly sized; it needs to fit six pixels in the space where eight normally go and it can't use fractionally sized pixels.
 
