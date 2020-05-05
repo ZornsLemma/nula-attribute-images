@@ -1,3 +1,12 @@
 puttext "boot.txt", "!BOOT", &0000
 putbasic "slideshow.bas", "SSHOW"
-putfile "IMG_20180609_1900447-cropped-240x256-16c.bbc", "JAFFA", &2fe0
+putfile "output/IMG_20180609_1900447-cropped-240x256-16c.bbc", "JAFFA", &2fe0
+putfile "output/parrot3-240x256-16c.bbc", "PARROT", &2fe0
+putfile "output/IMG_20180720_1301471-cropped-240x256-16c.bbc", "CAR", &2fe0
+putfile "output/IMG_20190311_1003577-cropped-saturated-240x256-16c.bbc", "PIZZA", &2fe0
+putfile "output/CIMG09707-saturated-240x256-16c.bbc", "TOWER", &2fe0
+; putfile "output/IMG_20190208_1612239-cropped-240x256-16c.bbc", "THING", &2fe0
+putfile "output/IMG_0821-240x256-16c.bbc", "BEACH", &2fe0
+putfile "output/CIMG05465-240x256-16c.bbc", "ROCKS", &2fe0
+putfile "output/IMG_08419-240x256-16c.bbc", "PLAZA", &2fe0
+putfile "output/CIMG05573-240x256-16c.bbc", "DESERT", &2fe0
