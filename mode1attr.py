@@ -86,7 +86,7 @@ def best_effort_palette_group_lookup(local_map, desired_colour, palette_group):
     for colour in palette_group:
         error = colour_error(desired_colour, colour)
         if colour in already_used_colours: # try to avoid removing dither and ending up three pixels same when we can't get a perfect match for all colours
-            error *= 1.2 # TODO: magic
+            pass # error *= 1.2 # TODO: magic
         if best_colour is None or error < best_error:
             best_colour = colour
             best_error = error
@@ -299,7 +299,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print centroid
         print label
         print colour_class_to_colour_map
-    else:
+    elif False:
         from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
         from scipy.spatial.distance import pdist
         from matplotlib import pyplot as plt
@@ -318,101 +318,101 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print colour_to_colour_class_map
         print colour_class_to_colour_map
 
-    data = list(image.getdata())
-    hist_class = defaultdict(int)
-    for i in range(0, len(data), 3):
-        pixel_triple = [colour_to_colour_class_map[colour] for colour in data[i:i+3]]
-        def do_pair(i, j):
-            # We use a set because the order of the two colours is irrelevant.
-            if pixel_triple[i] != pixel_triple[j]:
-                hist_class[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
-        do_pair(0, 1)
-        do_pair(0, 2)
-        do_pair(1, 2)
-    hist_class = sorted(hist_class.items(), key=lambda x: x[1], reverse=True)
-    for hist_class_entry in hist_class:
-        print "%s\t%s" % (hist_class_entry[0], hist_class_entry[1])
-    # We don't process the entire colour class histogram; once we've covered "a reasonable
-    # fraction" of the "votes", we stop. This avoids packing out the palette to handle
-    # relatively rare cases and leaves more scope for the colour histogram to influence
-    # the palette directly. TODO: 0.8 IS OBVIOUSLY MAGIC NUM
-    cutoff_cumulative_frequency = 1.0 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
-    cumulative_frequency = 0
-    for hist_class_entry in hist_class:
-        colour_class_set = hist_class_entry[0]
-        cumulative_frequency += hist_class_entry[1]
-        if cumulative_frequency > cutoff_cumulative_frequency:
-            break
-        print
-        print "A", colour_class_set
-        assert len(colour_class_set) == 2
-        #palette_union = set(colour_to_colour_class_map[colour] for colour in set.union(*palette))
-        palette_union = set.union(*palette)
-        print "X", palette
-        if len(palette_union) >= 15:
-            # Just a minor optimisation; if we've already got 15 colours in the
-            # palette there's no choice to be made any more, because we insist
-            # all 16 colours are present.
-            break
-        palette_colour_class = [set(colour_to_colour_class_map[colour] for colour in palette_group) for palette_group in palette]
-        print "Y", palette_colour_class
-        done = False
-        for palette_colour_class_group in palette_colour_class:
-            if colour_class_set.issubset(palette_colour_class_group):
-                # The palette already has a group which contains a colour from both of these colour classes, so
-                # don't do anything else with it here.
-                done = True
-        if not done:
-            # If there's a palette group which contains a colour from one of these colour classes,
-            # we will add a colour from the other colour class. Obviously we need a palette group
-            # which has space, and if there's more than one we pick the emptiest. TODO: We could
-            # probably be a lot smarter about picking when there are multiple possibilities.
-            best_palette_group = None
-            for palette_group, palette_colour_class_group in zip(palette, palette_colour_class):
-                intersection = colour_class_set.intersection(palette_colour_class_group)
-                if len(intersection) == 1 and len(palette_group) < 4:
-                    colour_group_to_add = colour_class_set - intersection
+        data = list(image.getdata())
+        hist_class = defaultdict(int)
+        for i in range(0, len(data), 3):
+            pixel_triple = [colour_to_colour_class_map[colour] for colour in data[i:i+3]]
+            def do_pair(i, j):
+                # We use a set because the order of the two colours is irrelevant.
+                if pixel_triple[i] != pixel_triple[j]:
+                    hist_class[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
+            do_pair(0, 1)
+            do_pair(0, 2)
+            do_pair(1, 2)
+        hist_class = sorted(hist_class.items(), key=lambda x: x[1], reverse=True)
+        for hist_class_entry in hist_class:
+            print "%s\t%s" % (hist_class_entry[0], hist_class_entry[1])
+        # We don't process the entire colour class histogram; once we've covered "a reasonable
+        # fraction" of the "votes", we stop. This avoids packing out the palette to handle
+        # relatively rare cases and leaves more scope for the colour histogram to influence
+        # the palette directly. TODO: 0.8 IS OBVIOUSLY MAGIC NUM
+        cutoff_cumulative_frequency = 1.0 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
+        cumulative_frequency = 0
+        for hist_class_entry in hist_class:
+            colour_class_set = hist_class_entry[0]
+            cumulative_frequency += hist_class_entry[1]
+            if cumulative_frequency > cutoff_cumulative_frequency:
+                break
+            print
+            print "A", colour_class_set
+            assert len(colour_class_set) == 2
+            #palette_union = set(colour_to_colour_class_map[colour] for colour in set.union(*palette))
+            palette_union = set.union(*palette)
+            print "X", palette
+            if len(palette_union) >= 15:
+                # Just a minor optimisation; if we've already got 15 colours in the
+                # palette there's no choice to be made any more, because we insist
+                # all 16 colours are present.
+                break
+            palette_colour_class = [set(colour_to_colour_class_map[colour] for colour in palette_group) for palette_group in palette]
+            print "Y", palette_colour_class
+            done = False
+            for palette_colour_class_group in palette_colour_class:
+                if colour_class_set.issubset(palette_colour_class_group):
+                    # The palette already has a group which contains a colour from both of these colour classes, so
+                    # don't do anything else with it here.
+                    done = True
+            if not done:
+                # If there's a palette group which contains a colour from one of these colour classes,
+                # we will add a colour from the other colour class. Obviously we need a palette group
+                # which has space, and if there's more than one we pick the emptiest. TODO: We could
+                # probably be a lot smarter about picking when there are multiple possibilities.
+                best_palette_group = None
+                for palette_group, palette_colour_class_group in zip(palette, palette_colour_class):
+                    intersection = colour_class_set.intersection(palette_colour_class_group)
+                    if len(intersection) == 1 and len(palette_group) < 4:
+                        colour_group_to_add = colour_class_set - intersection
+                        assert len(colour_group_to_add) == 1
+                        # If the colour group we would be adding to this palette entry has no free
+                        # colours left, it's no good to us - keep going and we might find one where
+                        # the other colour group is to be added instead.
+                        if pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0]) is not None:
+                            if (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                                best_palette_group = palette_group
+                                best_palette_group_intersection = intersection
+                if best_palette_group is not None:
+                    colour_group_to_add = colour_class_set - best_palette_group_intersection
+                    print "Q", colour_group_to_add
                     assert len(colour_group_to_add) == 1
-                    # If the colour group we would be adding to this palette entry has no free
-                    # colours left, it's no good to us - keep going and we might find one where
-                    # the other colour group is to be added instead.
-                    if pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0]) is not None:
-                        if (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                            best_palette_group = palette_group
-                            best_palette_group_intersection = intersection
-            if best_palette_group is not None:
-                colour_group_to_add = colour_class_set - best_palette_group_intersection
-                print "Q", colour_group_to_add
-                assert len(colour_group_to_add) == 1
-                colour_to_add = pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0])
-                assert colour_to_add is not None # SFTODO NOT SURE THIS ASSERTION CAN'T TRIGGER IN PRINCIPLE, IN WHICH CASE WE JUST DON'T DO ANYTHING I GUESS
-                best_palette_group.add(colour_to_add)
-                done = True
-        if not done:
-            # No palette group contains a colour from both of these colour classes, nor could
-            # we find an existing palette group with a colour from one of the classes to which
-            # we could add a colour from the other class, for whatever reason. If there's at
-            # least one unused colour in each colour class and a palette group with at least
-            # two spaces free we will add them. If there's more than one we prefer the emptiest.
-            # TODO: We could probably be smarter about picking one where we have a choice.
-            # If we can't find one there's nothing we can do.
-            emptiest_palette_group = None
-            for palette_group in palette:
-                if len(palette_group) <= 2 and (
-                        emptiest_palette_group is None or 
-                        len(palette_group) < len(emptiest_palette_group)):
-                    emptiest_palette_group = palette_group
-                    emptiest_palette_group_len = len(palette_group)
-            if emptiest_palette_group is not None:
-                colours_to_add = set(pick_colour_from_colour_class(palette, emptiest_palette_group, colour_class) for colour_class in colour_class_set)
-                if None not in colours_to_add:
-                    emptiest_palette_group.update(colours_to_add)
+                    colour_to_add = pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0])
+                    assert colour_to_add is not None # SFTODO NOT SURE THIS ASSERTION CAN'T TRIGGER IN PRINCIPLE, IN WHICH CASE WE JUST DON'T DO ANYTHING I GUESS
+                    best_palette_group.add(colour_to_add)
+                    done = True
+            if not done:
+                # No palette group contains a colour from both of these colour classes, nor could
+                # we find an existing palette group with a colour from one of the classes to which
+                # we could add a colour from the other class, for whatever reason. If there's at
+                # least one unused colour in each colour class and a palette group with at least
+                # two spaces free we will add them. If there's more than one we prefer the emptiest.
+                # TODO: We could probably be smarter about picking one where we have a choice.
+                # If we can't find one there's nothing we can do.
+                emptiest_palette_group = None
+                for palette_group in palette:
+                    if len(palette_group) <= 2 and (
+                            emptiest_palette_group is None or 
+                            len(palette_group) < len(emptiest_palette_group)):
+                        emptiest_palette_group = palette_group
+                        emptiest_palette_group_len = len(palette_group)
+                if emptiest_palette_group is not None:
+                    colours_to_add = set(pick_colour_from_colour_class(palette, emptiest_palette_group, colour_class) for colour_class in colour_class_set)
+                    if None not in colours_to_add:
+                        emptiest_palette_group.update(colours_to_add)
 
 
 
-    visualise_palette(palette, "zpal2.png")
-    #SFTODO = raw_input()
-    #assert False
+        visualise_palette(palette, "zpal2.png")
+        #SFTODO = raw_input()
+        #assert False
 
 for hist_entry in hist:
     print "%s\t%s" % (hist_entry[0], hist_entry[1])
