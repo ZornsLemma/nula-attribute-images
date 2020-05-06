@@ -35,13 +35,26 @@ def colour_error(a, b):
     b_rgb = image_palette_rgb(b)
     return distance(a_rgb, b_rgb)
 
+# TODO: We should probably get this to return the rank of the hist entry we picked, then we could use that to "be smarter" when picking between different palette groups as noted in some other TODO comments.
+# TODO: It kind of feels like we could be using the histogram "before" we call this function in order to decide what's best, but maybe I'm confused and let's just try this way first.
+# TODO: Do we need to be given palette_group? This is the palette_group we might add the returned colour to, but maybe that's not useful information, especially if I go with one of the above ideas.
 def pick_colour_from_colour_class(palette, palette_group, colour_class):
-    # TODO: For now we just take the smallest index colour in the colour class which isn't already in the palette, which is probably not optimal but is at least easy to verify by hand during testing - what we should almost certainly do here is use the colour-pair histogram to pick the most frequent pair possible
     palette_union = set.union(*palette)
     possible_colours = colour_class_to_colour_map[colour_class] - palette_union
     if len(possible_colours) == 0:
         return None
-    return min(possible_colours)
+    for colour_set, _ in hist:
+        # If both colours are already in the palette this histogram entry isn't helpful; we can't
+        # add those colours.
+        if not colour_set.issubset(palette_union):
+            difference = colour_set - palette_union
+            possible_colours = colour_class_to_colour_map[colour_class].intersection(difference)
+            if len(possible_colours) > 0:
+                return min(possible_colours) # pick one arbitrarily-but-consistently if there are two
+    # TODO: At this point it might be *possible* to pick a colour, but I'm not sure it's helpful
+    # to do so.
+    assert False # TODO: Let's see if this can happen
+    return None
 
 def best_effort_palette_group_lookup(desired_colour, palette_group):
     best_colour = None
