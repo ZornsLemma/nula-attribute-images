@@ -184,39 +184,49 @@ assert ysize == 256
 palette = [set() for i in range(0, 4)]
 if True: # SFTODO: Optional clustering palette generation as first step
     from numpy import array
-    from scipy.cluster.vq import vq, kmeans, whiten
+    from scipy.cluster.vq import vq, kmeans, kmeans2, whiten # SFTODO DON'T NEED KMEANS AND KMEANS2 AND MAY NOT NEED VQ OR WHITEN
     p = image.getpalette()
     features = []
     for colour in range(0, 16):
-        features.append(image_palette_rgb(colour))
+        features.append([float(SFTODO) for SFTODO in image_palette_rgb(colour)])
     features = array(features)
     print features
-    whitened = whiten(features)
-    best_codebook = None
-    for k in range(2, 17):
-        codebook, distortion = kmeans(whitened, k)
-        if best_codebook is None or distortion < best_distortion:
-            best_codebook = codebook
-            best_distortion = distortion
-        print k, distortion
-        if k == 6:
-            break # SFTODO TEMP HACK - CURRENT CODE IS SILLY THO BECAUSE 16 GROUPS WILL ALWAYS GIVE BEST (0) DISTORTION!
-    print best_codebook
-    print distortion
+    if False:
+        whitened = whiten(features)
+        best_codebook = None
+        for k in range(2, 17):
+            codebook, distortion = kmeans(whitened, k)
+            if best_codebook is None or distortion < best_distortion:
+                best_codebook = codebook
+                best_distortion = distortion
+            print k, distortion
+            if k == 6:
+                break # SFTODO TEMP HACK - CURRENT CODE IS SILLY THO BECAUSE 16 GROUPS WILL ALWAYS GIVE BEST (0) DISTORTION!
+        print best_codebook
+        print distortion
 
-    colour_to_colour_group_map = {}
-    colour_group_to_colour_map = defaultdict(set)
-    for colour in range(0,16):
-        best_colour_group = None
-        for colour_group, centroid in enumerate(best_codebook):
-            d = distance(centroid, image_palette_rgb(colour))
-            if best_colour_group is None or d < best_distance:
-                best_colour_group = colour_group
-                best_distance = d
-        colour_to_colour_group_map[colour] = best_colour_group
-        colour_group_to_colour_map[best_colour_group].add(colour)
-    print colour_to_colour_group_map
-    print colour_group_to_colour_map
+        colour_to_colour_group_map = {}
+        colour_group_to_colour_map = defaultdict(set)
+        for colour in range(0,16):
+            best_colour_group = None
+            for colour_group, centroid in enumerate(best_codebook):
+                d = distance(centroid, image_palette_rgb(colour))
+                if best_colour_group is None or d < best_distance:
+                    best_colour_group = colour_group
+                    best_distance = d
+            colour_to_colour_group_map[colour] = best_colour_group
+            colour_group_to_colour_map[best_colour_group].add(colour)
+        print colour_to_colour_group_map
+        print colour_group_to_colour_map
+    else:
+        k = 5 # SFTODO
+        centroid, label = kmeans2(features, k, minit="points", iter=10000000)
+        colour_group_to_colour_map = defaultdict(set)
+        for colour, colour_group in enumerate(label):
+            colour_group_to_colour_map[colour_group].add(colour)
+        print centroid
+        print label
+        print colour_group_to_colour_map
 
 
     assert False
