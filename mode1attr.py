@@ -35,10 +35,13 @@ def colour_error(a, b):
     b_rgb = image_palette_rgb(b)
     return distance(a_rgb, b_rgb)
 
-def pick_colour_from_colour_group(palette_group, colour_group):
-    # TODO: For now we just take the smallest index colour in the colour group, which is probably
-    # not optimal
-    return min(colour_group_to_colour_map[colour_group])
+def pick_colour_from_colour_class(palette, palette_group, colour_class):
+    # TODO: For now we just take the smallest index colour in the colour class which isn't already in the palette, which is probably not optimal but is at least easy to verify by hand during testing
+    palette_union = set.union(*palette)
+    possible_colours = colour_class_to_colour_map[colour_class] - palette_union
+    if len(possible_colours) == 0:
+        return None
+    return min(possible_colours)
 
 def best_effort_palette_group_lookup(desired_colour, palette_group):
     best_colour = None
@@ -210,28 +213,28 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print best_codebook
         print distortion
 
-        colour_to_colour_group_map = {}
-        colour_group_to_colour_map = defaultdict(set)
+        colour_to_colour_class_map = {}
+        colour_class_to_colour_map = defaultdict(set)
         for colour in range(0,16):
-            best_colour_group = None
-            for colour_group, centroid in enumerate(best_codebook):
+            best_colour_class = None
+            for colour_class, centroid in enumerate(best_codebook):
                 d = distance(centroid, image_palette_rgb(colour))
-                if best_colour_group is None or d < best_distance:
-                    best_colour_group = colour_group
+                if best_colour_class is None or d < best_distance:
+                    best_colour_class = colour_class
                     best_distance = d
-            colour_to_colour_group_map[colour] = best_colour_group
-            colour_group_to_colour_map[best_colour_group].add(colour)
-        print colour_to_colour_group_map
-        print colour_group_to_colour_map
+            colour_to_colour_class_map[colour] = best_colour_class
+            colour_class_to_colour_map[best_colour_class].add(colour)
+        print colour_to_colour_class_map
+        print colour_class_to_colour_map
     elif False:
         k = 5 # SFTODO
         centroid, label = kmeans2(features, k, minit="points", iter=10000000)
-        colour_group_to_colour_map = defaultdict(set)
-        for colour, colour_group in enumerate(label):
-            colour_group_to_colour_map[colour_group].add(colour)
+        colour_class_to_colour_map = defaultdict(set)
+        for colour, colour_class in enumerate(label):
+            colour_class_to_colour_map[colour_class].add(colour)
         print centroid
         print label
-        print colour_group_to_colour_map
+        print colour_class_to_colour_map
     else:
         from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
         from matplotlib import pyplot as plt
@@ -239,19 +242,19 @@ if True: # SFTODO: Optional clustering palette generation as first step
         fig = plt.figure(figsize=(25, 10))
         dn = dendrogram(Z)
         #plt.show()
-        colour_to_colour_group_map = fcluster(Z, t=5, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
+        colour_to_colour_class_map = fcluster(Z, t=5, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
         # fcluster() starts group numbers at 1; adjust to start at 0.
-        colour_to_colour_group_map = [n-1 for n in colour_to_colour_group_map]
-        colour_group_to_colour_map = defaultdict(set)
-        for colour, colour_group in enumerate(colour_to_colour_group_map):
-            colour_group_to_colour_map[colour_group].add(colour)
-        print colour_to_colour_group_map
-        print colour_group_to_colour_map
+        colour_to_colour_class_map = [n-1 for n in colour_to_colour_class_map]
+        colour_class_to_colour_map = defaultdict(set)
+        for colour, colour_class in enumerate(colour_to_colour_class_map):
+            colour_class_to_colour_map[colour_class].add(colour)
+        print colour_to_colour_class_map
+        print colour_class_to_colour_map
 
     data = list(image.getdata())
     hist = defaultdict(int)
     for i in range(0, len(data), 3):
-        pixel_triple = [colour_to_colour_group_map[colour] for colour in data[i:i+3]]
+        pixel_triple = [colour_to_colour_class_map[colour] for colour in data[i:i+3]]
         def do_pair(i, j):
             # We use a set because the order of the two colours is irrelevant.
             if pixel_triple[i] != pixel_triple[j]:
@@ -264,47 +267,67 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print "%s\t%s" % (hist_entry[0], hist_entry[1])
     # SFTODO: VERY COPY AND PASTE OF BELOW CODE, BUT LET'S NOT WORRY ABOUT THAT FOR NOW
     for hist_entry in hist:
-        colour_set = hist_entry[0] # SFTODO: ACTUALLY A COLOUR GROUP SET
-        assert len(colour_set) == 2
-        palette_union = set(colour_to_colour_group_map[colour] for colour in set.union(*palette))
-        print "X", palette_union
+        colour_class_set = hist_entry[0]
+        print
+        print "A", colour_class_set
+        assert len(colour_class_set) == 2
+        #palette_union = set(colour_to_colour_class_map[colour] for colour in set.union(*palette))
+        palette_union = set.union(*palette)
+        print "X", palette
         if len(palette_union) >= 15:
             # Just a minor optimisation; if we've already got 15 colours in the
             # palette there's no choice to be made any more, because we insist
             # all 16 colours are present.
             break
-        if colour_set.issubset(palette_union):
-            # Both of these colours are already in the palette, so we can't add
-            # them again (whether or not this allows this pair to be represented
-            # or not).
-            pass
-        else:
-            intersection = colour_set.intersection(palette_union)
-            if len(intersection) == 1:
-                # One of these colours is already in the palette. If there's space
-                # in its palette group for the other, add it. If not, we can't
-                # represent this pair properly so do nothing.
-                existing_colour = tuple(intersection)[0]
-                new_colour = tuple(colour_set - intersection)[0]
-                for palette_group in palette:
-                    # TODO: There may be multiple palette_groups which contain a colour from the existing_colour [which is really a colour group; names are bad due to copy and paste] group, and we should be smarter about picking one rather than just taking the first
-                    if len(colour_group_to_colour_map[existing_colour].intersection(palette_group)) > 0:
-                        if len(palette_group) < 4:
-                            palette_group.add(pick_colour_from_colour_group(palette_group, new_colour))
-                        break
-            else:
-                # Neither of these colours is already in the palette. Pick one of
-                # the palette groups with most free space and add the pair there.
-                # If no group has space for a pair, just ignore this pair.
-                emptiest_palette_group = None
-                for palette_group in palette:
-                    if len(palette_group) <= 2 and (
-                            emptiest_palette_group is None or 
-                            len(palette_group) < emptiest_palette_group_len):
-                        emptiest_palette_group = palette_group
-                        emptiest_palette_group_len = len(palette_group)
-                if emptiest_palette_group is not None:
-                    emptiest_palette_group.update(set(pick_colour_from_colour_group(emptiest_palette_group, colour_group) for colour_group in colour_set))
+        palette_colour_class = [set(colour_to_colour_class_map[colour] for colour in palette_group) for palette_group in palette]
+        print "Y", palette_colour_class
+        done = False
+        for palette_colour_class_group in palette_colour_class:
+            if colour_class_set.issubset(palette_colour_class_group):
+                # The palette already has a group which contains a colour from both of these colour classes, so
+                # don't do anything else with it here.
+                done = True
+        if not done:
+            # If there's a palette group which contains a colour from one of these colour classes,
+            # we will add a colour from the other colour class. Obviously we need a palette group
+            # which has space, and if there's more than one we pick the emptiest. TODO: We could
+            # probably be a lot smarter about picking when there are multiple possibilities.
+            best_palette_group = None
+            for palette_group, palette_colour_class_group in zip(palette, palette_colour_class):
+                intersection = colour_class_set.intersection(palette_colour_class_group)
+                if len(intersection) == 1 and len(palette_group) < 4:
+                    colour_group_to_add = colour_class_set - intersection
+                    assert len(colour_group_to_add) == 1
+                    # If the colour group we would be adding to this palette entry has no free
+                    # colours left, it's no good to us - keep going and we might find one where
+                    # the other colour group is to be added instead.
+                    if pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0]) is not None:
+                        if (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                            best_palette_group = palette_group
+                            best_palette_group_intersection = intersection
+            if best_palette_group is not None:
+                colour_group_to_add = colour_class_set - best_palette_group_intersection
+                print "Q", colour_group_to_add
+                assert len(colour_group_to_add) == 1
+                colour_to_add = pick_colour_from_colour_class(palette, palette_group, tuple(colour_group_to_add)[0])
+                assert colour_to_add is not None # SFTODO NOT SURE THIS ASSERTION CAN'T TRIGGER IN PRINCIPLE, IN WHICH CASE WE JUST DON'T DO ANYTHING I GUESS
+                best_palette_group.add(colour_to_add)
+                done = True
+        if not done:
+            # No palette group contains a colour from either of these colour classes.
+            # If there's a palette group with at least two spaces free we will add a colour
+            # from each of the colour classes. If there's more than one we will prefer the
+            # emptiest. TODO: We can probably be a lot smarter about that. If there isn't one
+            # there's nothing we can do.
+            emptiest_palette_group = None
+            for palette_group in palette:
+                if len(palette_group) <= 2 and (
+                        emptiest_palette_group is None or 
+                        len(palette_group) < len(emptiest_palette_group)):
+                    emptiest_palette_group = palette_group
+                    emptiest_palette_group_len = len(palette_group)
+            if emptiest_palette_group is not None:
+                emptiest_palette_group.update(set(pick_colour_from_colour_class(palette, emptiest_palette_group, colour_class) for colour_class in colour_class_set))
 
 
 
