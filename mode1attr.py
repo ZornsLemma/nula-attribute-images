@@ -38,6 +38,7 @@ def colour_error(a, b):
 # TODO: We should probably get this to return the rank of the hist entry we picked, then we could use that to "be smarter" when picking between different palette groups as noted in some other TODO comments.
 # TODO: It kind of feels like we could be using the histogram "before" we call this function in order to decide what's best, but maybe I'm confused and let's just try this way first.
 # TODO: Do we need to be given palette_group? This is the palette_group we might add the returned colour to, but maybe that's not useful information, especially if I go with one of the above ideas.
+# TODO: With the current tweak to cut off x% through the colour class histogram so as to leave some of the palette free for the colour histogram pass, I find myself wondering if this should (and this is a bit fuzzily self-contradictory, but it's late and I want to go to bed ;-) ) avoid the "top" part of the colour histogram so as to leave those colours available for exact pairing later on and instead prefer "mid-popularity" colours from the colour histogram. Maybe as a completely different approach the colour class phase should avoid packing out any palette groups completely (maybe even only half filling them), doing the best it can to support the most popular colour class pairs in that way. Not at all sure.
 def pick_colour_from_colour_class(palette, palette_group, colour_class):
     palette_union = set.union(*palette)
     possible_colours = colour_class_to_colour_map[colour_class] - palette_union
@@ -292,10 +293,17 @@ if True: # SFTODO: Optional clustering palette generation as first step
     hist_class = sorted(hist_class.items(), key=lambda x: x[1], reverse=True)
     for hist_class_entry in hist_class:
         print "%s\t%s" % (hist_class_entry[0], hist_class_entry[1])
-    # TODO: We may not want to process the entire histogram, so as to leave some scope
-    # for the next stage to do something. Scope for tuning here.
+    # We don't process the entire colour class histogram; once we've covered "a reasonable
+    # fraction" of the "votes", we stop. This avoids packing out the palette to handle
+    # relatively rare cases and leaves more scope for the colour histogram to influence
+    # the palette directly. TODO: 0.8 IS OBVIOUSLY MAGIC NUM
+    cutoff_cumulative_frequency = 0.7 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
+    cumulative_frequency = 0
     for hist_class_entry in hist_class:
         colour_class_set = hist_class_entry[0]
+        cumulative_frequency += hist_class_entry[1]
+        if cumulative_frequency > cutoff_cumulative_frequency:
+            break
         print
         print "A", colour_class_set
         assert len(colour_class_set) == 2
