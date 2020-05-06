@@ -86,7 +86,7 @@ def best_effort_palette_group_lookup(local_map, desired_colour, palette_group):
     for colour in palette_group:
         error = colour_error(desired_colour, colour)
         if colour in already_used_colours: # try to avoid removing dither and ending up three pixels same when we can't get a perfect match for all colours
-            pass # error *= 1.2 # TODO: magic
+            error *= 1.5 # TODO: magic
         if best_colour is None or error < best_error:
             best_colour = colour
             best_error = error
