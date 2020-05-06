@@ -1,10 +1,13 @@
 REM Code based on tricky's game.asm, but rather hacked about
-IntCA2=1
+IntCA1=2
 SysIntVSync=IntCA1
 SystemVIA=&FE40
+ViaIFR=13
 SysViaIFR=SystemVIA+ViaIFR
-DIM code% 256
+nulapal=&FE23
+DIM code% 512
 FOR opt%=0 TO 3 STEP 3
+P%=code%
 [OPT opt%
 .loop
 
@@ -13,6 +16,14 @@ FOR opt%=0 TO 3 STEP 3
 .wait_vsync
 	bit SysViaIFR
 	beq wait_vsync
+
+	ldx #15
+.init_col
+	lda init_pal,x
+	sta nulapal
+	dex
+	bpl init_col
+.sftodo jmp sftodo
 
 	lda cols
 	ldy #7
@@ -36,7 +47,7 @@ FOR opt%=0 TO 3 STEP 3
 	dex
 	bne waitt
 	pha : pla
-;	beq *+2
+\	beq *+2
 	nop
 
 	ldy #1
@@ -52,9 +63,29 @@ FOR opt%=0 TO 3 STEP 3
 .wait
 	dex
 	bne wait
-	beq *+2
+	beq foo
+.foo
 
 	iny : bne next_line
+	rts
+
+.init_pal
+	equw &0000
+	equw &1111
+	equw &2222
+	equw &3333
+	equw &4444
+	equw &5555
+	equw &6666
+	equw &7777
+	equw &8888
+	equw &9999
+	equw &AAAA
+	equw &BBBB
+	equw &CCCC
+	equw &DDDD
+	equw &EEEE
+	equw &FFFF
 ]
 NEXT
 MODE 1

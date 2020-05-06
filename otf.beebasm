@@ -1,0 +1,2 @@
+puttext "boot.txt", "!BOOT", &0000
+putbasic "showotf.bas", "SSHOW"
