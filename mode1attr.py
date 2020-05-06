@@ -81,12 +81,12 @@ def pick_colour_from_colour_class(palette, palette_group, colour_class):
 def best_effort_palette_group_lookup(local_map, desired_colour, palette_group):
     if desired_colour in local_map:
         return local_map[desired_colour]
-    unavailable_colours = set(c[0] for c in local_map.values())
+    already_used_colours = set(c[0] for c in local_map.values())
     best_colour = None
     for colour in palette_group:
-        if colour in unavailable_colours:
-            continue
         error = colour_error(desired_colour, colour)
+        if colour in already_used_colours: # try to avoid removing dither and ending up three pixels same when we can't get a perfect match for all colours
+            error *= 1.2 # TODO: magic
         if best_colour is None or error < best_error:
             best_colour = colour
             best_error = error
