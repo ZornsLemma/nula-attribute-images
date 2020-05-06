@@ -102,17 +102,20 @@ def palette_group_average_error(colour, palette_group):
 # TODO: I wonder if when we can't get the exact colour, we should avoid the closest match *if* it would result in making two pixels in this triplet identical when they previously weren't; in that case take the second closest match (perhaps not if it's "very different"). My thinking here is that while we might change the colour of things, we'd hopefully do so with some consistency and this would avoid losing detail in dithering and replacing it with flat colours giving that ugly-ish horizontal mini-stripe attribute appearance.
 def best_effort_pixel_representation(pixels, palette):
     best_palette_group = None
-    print "AAA", pixels
+    #print "AAA", pixels
     for i, palette_group in enumerate(palette):
         local_map = {}
         adjusted_pixels = []
         total_error = 0
         for pixel in pixels:
+            if pixel in palette_group:
+                local_map[pixel] = (pixel, 0.0)
+        for pixel in pixels:
             adjusted_pixel, error = best_effort_palette_group_lookup(local_map, pixel, palette_group)
             local_map[pixel] = (adjusted_pixel, error)
             adjusted_pixels.append(adjusted_pixel)
             total_error += error
-        print "QQQ", local_map, total_error
+        #print "QQQ", local_map, total_error
         if best_palette_group is None or total_error < best_total_error:
             best_palette_group = i
             best_total_error = total_error
