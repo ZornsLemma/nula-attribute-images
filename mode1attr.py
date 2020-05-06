@@ -13,6 +13,7 @@
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFont
+import colorsys
 import math
 import subprocess
 import sys
@@ -29,8 +30,26 @@ def image_palette_rgb(colour):
     return (p[colour*3+0] >> 4, p[colour*3+1] >> 4, p[colour*3+2] >> 4)
 
 def distance(a, b):
-    # TODO: Do we need to bother taking square root here?
-    return math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2)
+    # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
+    # Euclidean: return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    a_hsv = hsv_from_rgb(a)
+    b_hsv = hsv_from_rgb(b)
+    h_dist = abs(a_hsv[0] - b_hsv[0])
+    if h_dist > 0.5:
+        h_dist = 1 - h_dist
+    s_dist = abs(a_hsv[1] - b_hsv[1])
+    v_dist = abs(a_hsv[2] - b_hsv[2])
+    # TODO: Magic numbers!
+    # At this point, 0 <= h_dist <= 0.5 and 0 <= [sv]_dist <= 1. We want to emphasise h_dist
+    # so we scale it up and calculate a Euclidean distance. This probably makes some kind of
+    # sense...
+    h_dist *= 5
+    # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
+    return math.sqrt(h_dist*h_dist + s_dist*s_dist + v_dist*v_dist)
+
+def hsv_from_rgb(rgb):
+    assert all(0 <= rgb[i] <= 15 for i in range(0, 2))
+    return colorsys.rgb_to_hsv(*[c/15.0 for c in rgb])
 
 def colour_error(a, b):
     a_rgb = image_palette_rgb(a)
@@ -97,14 +116,16 @@ def visualise_palette(palette, filename):
     image_palette = image.getpalette()
     d = PIL.ImageDraw.ImageDraw(output)
     font = PIL.ImageFont.truetype("Arial.ttf", 18)
-    colour_black = (0, 0, 0)
+    colour_black = colour_black_4bit = (0, 0, 0)
     colour_white = (255, 255, 255)
+    colour_white_4bit = (15, 15, 15)
     for y, palette_group in enumerate(palette):
         for x, colour in enumerate(palette_group):
-            # TODO: Should we use the 4-bit colours here (shifted back up to high nybble, of course)?
-            colour_rgb = (image_palette[colour*3+0], image_palette[colour*3+1], image_palette[colour*3+2])
+            #colour_rgb = (image_palette[colour*3+0], image_palette[colour*3+1], image_palette[colour*3+2])
+            colour_rgb_4bit = image_palette_rgb(colour)
+            colour_rgb = tuple(x<<4 for x in colour_rgb_4bit)
             d.rectangle((x*cell_size, y*cell_size, (x+1)*cell_size, (y+1)*cell_size), fill=colour_rgb, outline=colour_rgb)
-            if distance(colour_rgb, colour_white) < distance(colour_rgb, colour_black):
+            if distance(colour_rgb_4bit, colour_white_4bit) < distance(colour_rgb_4bit, colour_black_4bit):
                 font_colour = colour_black
             else:
                 font_colour = colour_white
@@ -268,12 +289,15 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print colour_class_to_colour_map
     else:
         from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+        from scipy.spatial.distance import pdist
         from matplotlib import pyplot as plt
-        Z = linkage(features, method='ward') # SFTODO EXPERIMENT WITH METHOD
+        #Z = linkage(features, method='ward') # SFTODO EXPERIMENT WITH METHOD
+        y = pdist(features, metric=distance)
+        Z = linkage(y, method='average') # SFTODO EXPERMENT WITH METHOD - NOTE NOT ALL VALID WHEN WE PASS y
         fig = plt.figure(figsize=(25, 10))
         dn = dendrogram(Z)
         plt.show()
-        colour_to_colour_class_map = fcluster(Z, t=8, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
+        colour_to_colour_class_map = fcluster(Z, t=0.7, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
         # fcluster() starts group numbers at 1; adjust to start at 0.
         colour_to_colour_class_map = [n-1 for n in colour_to_colour_class_map]
         colour_class_to_colour_map = defaultdict(set)
