@@ -269,8 +269,8 @@ if True: # SFTODO: Optional clustering palette generation as first step
         Z = linkage(features, method='ward') # SFTODO EXPERIMENT WITH METHOD
         fig = plt.figure(figsize=(25, 10))
         dn = dendrogram(Z)
-        #plt.show()
-        colour_to_colour_class_map = fcluster(Z, t=5, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
+        plt.show()
+        colour_to_colour_class_map = fcluster(Z, t=8, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
         # fcluster() starts group numbers at 1; adjust to start at 0.
         colour_to_colour_class_map = [n-1 for n in colour_to_colour_class_map]
         colour_class_to_colour_map = defaultdict(set)
@@ -297,7 +297,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
     # fraction" of the "votes", we stop. This avoids packing out the palette to handle
     # relatively rare cases and leaves more scope for the colour histogram to influence
     # the palette directly. TODO: 0.8 IS OBVIOUSLY MAGIC NUM
-    cutoff_cumulative_frequency = 0.7 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
+    cutoff_cumulative_frequency = 0.9 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
     cumulative_frequency = 0
     for hist_class_entry in hist_class:
         colour_class_set = hist_class_entry[0]
