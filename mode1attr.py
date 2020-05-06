@@ -1,3 +1,5 @@
+# TODO: Perhaps try measuring distance in HSV space not RGB space? And perhaps do a weighted average of those three components with a big weight attached to hue?
+
 # TODO: Possible idea to try...
 #
 # We start of by performing clustering on the colours, which will hopefully reveal a small number
@@ -73,6 +75,7 @@ def palette_group_average_error(colour, palette_group):
     return (sum(colour_error(colour, palette_colour) for palette_colour in palette_group) /
             len(palette_group))
 
+# TODO: I wonder if when we can't get the exact colour, we should avoid the closest match *if* it would result in making two pixels in this triplet identical when they previously weren't; in that case take the second closest match (perhaps not if it's "very different"). My thinking here is that while we might change the colour of things, we'd hopefully do so with some consistency and this would avoid losing detail in dithering and replacing it with flat colours giving that ugly-ish horizontal mini-stripe attribute appearance.
 def best_effort_pixel_representation(pixels, palette):
     best_palette_group = None
     for i, palette_group in enumerate(palette):
