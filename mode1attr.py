@@ -35,6 +35,11 @@ def colour_error(a, b):
     b_rgb = image_palette_rgb(b)
     return distance(a_rgb, b_rgb)
 
+def pick_colour_from_colour_group(palette_group, colour_group):
+    # TODO: For now we just take the smallest index colour in the colour group, which is probably
+    # not optimal
+    return min(colour_group_to_colour_map[colour_group])
+
 def best_effort_palette_group_lookup(desired_colour, palette_group):
     best_colour = None
     for colour in palette_group:
@@ -233,7 +238,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
         Z = linkage(features, method='ward') # SFTODO EXPERIMENT WITH METHOD
         fig = plt.figure(figsize=(25, 10))
         dn = dendrogram(Z)
-        plt.show()
+        #plt.show()
         colour_to_colour_group_map = fcluster(Z, t=5, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
         # fcluster() starts group numbers at 1; adjust to start at 0.
         colour_to_colour_group_map = [n-1 for n in colour_to_colour_group_map]
@@ -243,8 +248,68 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print colour_to_colour_group_map
         print colour_group_to_colour_map
 
+    data = list(image.getdata())
+    hist = defaultdict(int)
+    for i in range(0, len(data), 3):
+        pixel_triple = [colour_to_colour_group_map[colour] for colour in data[i:i+3]]
+        def do_pair(i, j):
+            # We use a set because the order of the two colours is irrelevant.
+            if pixel_triple[i] != pixel_triple[j]:
+                hist[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
+        do_pair(0, 1)
+        do_pair(0, 2)
+        do_pair(1, 2)
+    hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
+    for hist_entry in hist:
+        print "%s\t%s" % (hist_entry[0], hist_entry[1])
+    # SFTODO: VERY COPY AND PASTE OF BELOW CODE, BUT LET'S NOT WORRY ABOUT THAT FOR NOW
+    for hist_entry in hist:
+        colour_set = hist_entry[0] # SFTODO: ACTUALLY A COLOUR GROUP SET
+        assert len(colour_set) == 2
+        palette_union = set(colour_to_colour_group_map[colour] for colour in set.union(*palette))
+        print "X", palette_union
+        if len(palette_union) >= 15:
+            # Just a minor optimisation; if we've already got 15 colours in the
+            # palette there's no choice to be made any more, because we insist
+            # all 16 colours are present.
+            break
+        if colour_set.issubset(palette_union):
+            # Both of these colours are already in the palette, so we can't add
+            # them again (whether or not this allows this pair to be represented
+            # or not).
+            pass
+        else:
+            intersection = colour_set.intersection(palette_union)
+            if len(intersection) == 1:
+                # One of these colours is already in the palette. If there's space
+                # in its palette group for the other, add it. If not, we can't
+                # represent this pair properly so do nothing.
+                existing_colour = tuple(intersection)[0]
+                new_colour = tuple(colour_set - intersection)[0]
+                for palette_group in palette:
+                    # TODO: There may be multiple palette_groups which contain a colour from the existing_colour [which is really a colour group; names are bad due to copy and paste] group, and we should be smarter about picking one rather than just taking the first
+                    if len(colour_group_to_colour_map[existing_colour].intersection(palette_group)) > 0:
+                        if len(palette_group) < 4:
+                            palette_group.add(pick_colour_from_colour_group(palette_group, new_colour))
+                        break
+            else:
+                # Neither of these colours is already in the palette. Pick one of
+                # the palette groups with most free space and add the pair there.
+                # If no group has space for a pair, just ignore this pair.
+                emptiest_palette_group = None
+                for palette_group in palette:
+                    if len(palette_group) <= 2 and (
+                            emptiest_palette_group is None or 
+                            len(palette_group) < emptiest_palette_group_len):
+                        emptiest_palette_group = palette_group
+                        emptiest_palette_group_len = len(palette_group)
+                if emptiest_palette_group is not None:
+                    emptiest_palette_group.update(set(pick_colour_from_colour_group(emptiest_palette_group, colour_group) for colour_group in colour_set))
 
 
+
+    visualise_palette(palette, "zpal2.png")
+    SFTODO = raw_input()
     assert False
 
 # Examine the pixel triples in the image to build the histogram of colour pairs.
