@@ -36,7 +36,7 @@ def colour_error(a, b):
     return distance(a_rgb, b_rgb)
 
 def pick_colour_from_colour_class(palette, palette_group, colour_class):
-    # TODO: For now we just take the smallest index colour in the colour class which isn't already in the palette, which is probably not optimal but is at least easy to verify by hand during testing
+    # TODO: For now we just take the smallest index colour in the colour class which isn't already in the palette, which is probably not optimal but is at least easy to verify by hand during testing - what we should almost certainly do here is use the colour-pair histogram to pick the most frequent pair possible
     palette_union = set.union(*palette)
     possible_colours = colour_class_to_colour_map[colour_class] - palette_union
     if len(possible_colours) == 0:
@@ -337,8 +337,8 @@ if True: # SFTODO: Optional clustering palette generation as first step
 
 
     visualise_palette(palette, "zpal2.png")
-    SFTODO = raw_input()
-    assert False
+    #SFTODO = raw_input()
+    #assert False
 
 # Examine the pixel triples in the image to build the histogram of colour pairs.
 data = list(image.getdata())
