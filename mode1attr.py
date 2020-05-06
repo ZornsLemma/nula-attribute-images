@@ -189,6 +189,20 @@ assert ysize == 256
 #   good approximation to those colours when they appear together with distinct
 #   colours.
 
+# Examine the pixel triples in the image to build the histogram of colour pairs.
+data = list(image.getdata())
+hist = defaultdict(int)
+for i in range(0, len(data), 3):
+    pixel_triple = data[i:i+3]
+    def do_pair(i, j):
+        # We use a set because the order of the two colours is irrelevant.
+        if pixel_triple[i] != pixel_triple[j]:
+            hist[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
+    do_pair(0, 1)
+    do_pair(0, 2)
+    do_pair(1, 2)
+hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
+
 palette = [set() for i in range(0, 4)]
 if True: # SFTODO: Optional clustering palette generation as first step
     from numpy import array
@@ -252,23 +266,23 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print colour_class_to_colour_map
 
     data = list(image.getdata())
-    hist = defaultdict(int)
+    hist_class = defaultdict(int)
     for i in range(0, len(data), 3):
         pixel_triple = [colour_to_colour_class_map[colour] for colour in data[i:i+3]]
         def do_pair(i, j):
             # We use a set because the order of the two colours is irrelevant.
             if pixel_triple[i] != pixel_triple[j]:
-                hist[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
+                hist_class[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
         do_pair(0, 1)
         do_pair(0, 2)
         do_pair(1, 2)
-    hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
-    for hist_entry in hist:
-        print "%s\t%s" % (hist_entry[0], hist_entry[1])
+    hist_class = sorted(hist_class.items(), key=lambda x: x[1], reverse=True)
+    for hist_class_entry in hist_class:
+        print "%s\t%s" % (hist_class_entry[0], hist_class_entry[1])
     # TODO: We may not want to process the entire histogram, so as to leave some scope
     # for the next stage to do something. Scope for tuning here.
-    for hist_entry in hist:
-        colour_class_set = hist_entry[0]
+    for hist_class_entry in hist_class:
+        colour_class_set = hist_class_entry[0]
         print
         print "A", colour_class_set
         assert len(colour_class_set) == 2
@@ -339,20 +353,6 @@ if True: # SFTODO: Optional clustering palette generation as first step
     visualise_palette(palette, "zpal2.png")
     #SFTODO = raw_input()
     #assert False
-
-# Examine the pixel triples in the image to build the histogram of colour pairs.
-data = list(image.getdata())
-hist = defaultdict(int)
-for i in range(0, len(data), 3):
-    pixel_triple = data[i:i+3]
-    def do_pair(i, j):
-        # We use a set because the order of the two colours is irrelevant.
-        if pixel_triple[i] != pixel_triple[j]:
-            hist[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
-    do_pair(0, 1)
-    do_pair(0, 2)
-    do_pair(1, 2)
-hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
 
 for hist_entry in hist:
     print "%s\t%s" % (hist_entry[0], hist_entry[1])
