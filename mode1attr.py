@@ -31,7 +31,7 @@ def image_palette_rgb(colour):
 
 def distance(a, b):
     # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
-    # Euclidean: return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
     a_hsv = hsv_from_rgb(a)
     b_hsv = hsv_from_rgb(b)
     h_dist = abs(a_hsv[0] - b_hsv[0])
@@ -309,7 +309,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
         fig = plt.figure(figsize=(25, 10))
         dn = dendrogram(Z)
         plt.show()
-        colour_to_colour_class_map = fcluster(Z, t=0.7, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
+        colour_to_colour_class_map = fcluster(Z, t=8, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
         # fcluster() starts group numbers at 1; adjust to start at 0.
         colour_to_colour_class_map = [n-1 for n in colour_to_colour_class_map]
         colour_class_to_colour_map = defaultdict(set)
