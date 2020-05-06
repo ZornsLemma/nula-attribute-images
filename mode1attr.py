@@ -78,9 +78,14 @@ def pick_colour_from_colour_class(palette, palette_group, colour_class):
     assert False # TODO: Let's see if this can happen
     return None
 
-def best_effort_palette_group_lookup(desired_colour, palette_group):
+def best_effort_palette_group_lookup(local_map, desired_colour, palette_group):
+    if desired_colour in local_map:
+        return local_map[desired_colour]
+    unavailable_colours = set(c[0] for c in local_map.values())
     best_colour = None
     for colour in palette_group:
+        if colour in unavailable_colours:
+            continue
         error = colour_error(desired_colour, colour)
         if best_colour is None or error < best_error:
             best_colour = colour
@@ -97,13 +102,17 @@ def palette_group_average_error(colour, palette_group):
 # TODO: I wonder if when we can't get the exact colour, we should avoid the closest match *if* it would result in making two pixels in this triplet identical when they previously weren't; in that case take the second closest match (perhaps not if it's "very different"). My thinking here is that while we might change the colour of things, we'd hopefully do so with some consistency and this would avoid losing detail in dithering and replacing it with flat colours giving that ugly-ish horizontal mini-stripe attribute appearance.
 def best_effort_pixel_representation(pixels, palette):
     best_palette_group = None
+    print "AAA", pixels
     for i, palette_group in enumerate(palette):
+        local_map = {}
         adjusted_pixels = []
         total_error = 0
         for pixel in pixels:
-            adjusted_pixel, error = best_effort_palette_group_lookup(pixel, palette_group)
+            adjusted_pixel, error = best_effort_palette_group_lookup(local_map, pixel, palette_group)
+            local_map[pixel] = (adjusted_pixel, error)
             adjusted_pixels.append(adjusted_pixel)
             total_error += error
+        print "QQQ", local_map, total_error
         if best_palette_group is None or total_error < best_total_error:
             best_palette_group = i
             best_total_error = total_error
@@ -324,7 +333,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
     # fraction" of the "votes", we stop. This avoids packing out the palette to handle
     # relatively rare cases and leaves more scope for the colour histogram to influence
     # the palette directly. TODO: 0.8 IS OBVIOUSLY MAGIC NUM
-    cutoff_cumulative_frequency = 0.9 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
+    cutoff_cumulative_frequency = 1.0 * sum(hist_class_entry[1] for hist_class_entry in hist_class)
     cumulative_frequency = 0
     for hist_class_entry in hist_class:
         colour_class_set = hist_class_entry[0]
