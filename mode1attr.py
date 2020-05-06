@@ -218,7 +218,7 @@ if True: # SFTODO: Optional clustering palette generation as first step
             colour_group_to_colour_map[best_colour_group].add(colour)
         print colour_to_colour_group_map
         print colour_group_to_colour_map
-    else:
+    elif False:
         k = 5 # SFTODO
         centroid, label = kmeans2(features, k, minit="points", iter=10000000)
         colour_group_to_colour_map = defaultdict(set)
@@ -227,6 +227,22 @@ if True: # SFTODO: Optional clustering palette generation as first step
         print centroid
         print label
         print colour_group_to_colour_map
+    else:
+        from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+        from matplotlib import pyplot as plt
+        Z = linkage(features, method='ward') # SFTODO EXPERIMENT WITH METHOD
+        fig = plt.figure(figsize=(25, 10))
+        dn = dendrogram(Z)
+        plt.show()
+        colour_to_colour_group_map = fcluster(Z, t=5, criterion='distance') # SFTODO EXPERIMENT WITH T, CRITERION
+        # fcluster() starts group numbers at 1; adjust to start at 0.
+        colour_to_colour_group_map = [n-1 for n in colour_to_colour_group_map]
+        colour_group_to_colour_map = defaultdict(set)
+        for colour, colour_group in enumerate(colour_to_colour_group_map):
+            colour_group_to_colour_map[colour_group].add(colour)
+        print colour_to_colour_group_map
+        print colour_group_to_colour_map
+
 
 
     assert False
