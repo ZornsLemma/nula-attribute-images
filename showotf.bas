@@ -17,7 +17,7 @@ P%=code%
 	bit SysViaIFR
 	beq wait_vsync
 
-	ldx #15
+	ldx #31
 .init_col
 	lda init_pal,x
 	sta nulapal
@@ -70,6 +70,7 @@ P%=code%
 	rts
 
 .init_pal
+	\ Note each pair is reversed
 	equw &0000
 	equw &1111
 	equw &2222
