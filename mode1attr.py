@@ -265,7 +265,8 @@ if True: # SFTODO: Optional clustering palette generation as first step
     hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
     for hist_entry in hist:
         print "%s\t%s" % (hist_entry[0], hist_entry[1])
-    # SFTODO: VERY COPY AND PASTE OF BELOW CODE, BUT LET'S NOT WORRY ABOUT THAT FOR NOW
+    # TODO: We may not want to process the entire histogram, so as to leave some scope
+    # for the next stage to do something. Scope for tuning here.
     for hist_entry in hist:
         colour_class_set = hist_entry[0]
         print
@@ -314,11 +315,13 @@ if True: # SFTODO: Optional clustering palette generation as first step
                 best_palette_group.add(colour_to_add)
                 done = True
         if not done:
-            # No palette group contains a colour from either of these colour classes.
-            # If there's a palette group with at least two spaces free we will add a colour
-            # from each of the colour classes. If there's more than one we will prefer the
-            # emptiest. TODO: We can probably be a lot smarter about that. If there isn't one
-            # there's nothing we can do.
+            # No palette group contains a colour from both of these colour classes, nor could
+            # we find an existing palette group with a colour from one of the classes to which
+            # we could add a colour from the other class, for whatever reason. If there's at
+            # least one unused colour in each colour class and a palette group with at least
+            # two spaces free we will add them. If there's more than one we prefer the emptiest.
+            # TODO: We could probably be smarter about picking one where we have a choice.
+            # If we can't find one there's nothing we can do.
             emptiest_palette_group = None
             for palette_group in palette:
                 if len(palette_group) <= 2 and (
@@ -327,7 +330,9 @@ if True: # SFTODO: Optional clustering palette generation as first step
                     emptiest_palette_group = palette_group
                     emptiest_palette_group_len = len(palette_group)
             if emptiest_palette_group is not None:
-                emptiest_palette_group.update(set(pick_colour_from_colour_class(palette, emptiest_palette_group, colour_class) for colour_class in colour_class_set))
+                colours_to_add = set(pick_colour_from_colour_class(palette, emptiest_palette_group, colour_class) for colour_class in colour_class_set)
+                if None not in colours_to_add:
+                    emptiest_palette_group.update(colours_to_add)
 
 
 
