@@ -28,15 +28,6 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         lda #&29                           : sta CrtcVal ; because my LCD doesn't sync with &28!
 
 
-\ Load the initial palette SFTODO NEEDS TO BE IN LOOP
-\ TODO I haven't cycle matched tricky's code here, do I need to? probably...
-        ldx #31
-.init_col
-        lda init_pal,x
-        sta nulapal
-        dex
-        bpl init_col
-
 
 .loop
 
@@ -47,27 +38,17 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         bit SysViaIFR
         beq wait_vsync
 
-\ tricky's code initialises the ULA palette here. TODO For now I've left a
-\ no-op version if it here to preserve cycle counts, fiddle with this later
-        lda dummy
-        ldy #7
-        ldx #3
-.init_col1
-        asl A
-        bcc unused
-        pha
-        tya
-        ora init_pal,x
-        STA &8000 : EOR #&10 : STA &8000 : EOR #&40 : STA &8000 : EOR #&10 : STA &8000
+\ Load the initial palette
+\ TODO I haven't cycle matched tricky's code here, do I need to? probably...
+        ldx #31
+.init_col
+        lda init_pal,x
+        sta nulapal
         dex
-        pla
-.unused
-        dey
-        bpl init_col1
-
+        bpl init_col
 
 \ Wait out line Y=0
-        ldx #207
+        ldx #237
 .waitt
         pha : pla : pha : pla
         dex
@@ -120,7 +101,7 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         equw &0000
         equw &1111
         equw &2222
-        equw &3333
+        equw &3FFF
         equw &4444
         equw &5555
         equw &6666
@@ -132,14 +113,12 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         equw &CCCC
         equw &DDDD
         equw &EEEE
-        equw &FFFF
+        equw &F333
 ]
 NEXT
 *TV255,1
 MODE 1
-REMVDU 23;3,&29;0;0;0
-REMVDU 23,1;0;0;0;0
-REMVDU 23;8202;0;0;0;
+VDU 23;8202;0;0;0;
 ?&FE22=&61
 FOR I%=0 TO 15
 ?&FE21=(I%*16)+(I% EOR 7)
@@ -152,7 +131,7 @@ pal?(I%+&000)=&3F:pal?(I%+&100)=&00:REM 3->red
 pal?(I%+&001)=&30:pal?(I%+&101)=&F0:REM 3->green
 pal?(I%+&002)=&30:pal?(I%+&102)=&0F:REM 3->blue
 NEXT
-FOR I%=&3000 TO &4200
-?I%=&EE
+FOR I%=&3000 TO &7FFC STEP 4
+!I%=&EEEEEEEE
 NEXT
 CALL start
