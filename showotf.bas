@@ -9,9 +9,12 @@ CrtcVal=&FE01
 CrtcR1HorizontalDisplayed=1
 CrtcR2HorizontalSyncPosition=2
 CrtcR3SyncPulseWidths=3
+ulapal=&FE21
 nulapal=&FE23
 pal=&3000-&800
-init_pal=pal-32
+init_nula_pal=pal-32
+init_ula_pal=init_nula_pal-16
+updatepal=nulapal:REM sometimes will want ulapal, sometimes nulapal
 FOR opt%=0 TO 3 STEP 3
 P%=&900:REM we need to avoid page crossing so don't DIM code space
 [OPT opt%
@@ -29,6 +32,19 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         lda #&29                           : sta CrtcVal ; because my LCD doesn't sync with &28!
 
 
+        ldx #15
+.init_ula_palette
+        lda init_ula_pal,x
+        sta ulapal
+        dex
+        bpl init_ula_palette
+
+        ldx #31
+.init_col
+        lda init_nula_pal,x
+        sta nulapal
+        dex
+        bpl init_col
 
 .loop
 
@@ -43,7 +59,7 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
 \ TODO I haven't cycle matched tricky's code here, do I need to? probably...
         ldx #31
 .init_col
-        lda init_pal,x
+        lda init_nula_pal,x
         sta nulapal
         dex
         bpl init_col
@@ -70,15 +86,15 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         \ 24=ditto .col1 lda #3 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette ; EOR #&40 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette
         \ A total of 64 cycles
 
-	\ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
-        lda pal+&000,y:sta nulapal \ 8 cycles
-        lda pal+&100,y:sta nulapal \ 8 cycles
-        lda pal+&200,y:sta nulapal \ 8 cycles
-        lda pal+&300,y:sta nulapal \ 8 cycles
-        lda pal+&400,y:sta nulapal \ 8 cycles
-        lda pal+&500,y:sta nulapal \ 8 cycles
-        lda pal+&600,y:sta nulapal \ 8 cycles
-        lda pal+&700,y:sta nulapal \ 8 cycles
+        \ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
+        lda pal+&000,y:sta updatepal \ 8 cycles
+        lda pal+&100,y:sta updatepal \ 8 cycles
+        lda pal+&200,y:sta updatepal \ 8 cycles
+        lda pal+&300,y:sta updatepal \ 8 cycles
+        lda pal+&400,y:sta updatepal \ 8 cycles
+        lda pal+&500,y:sta updatepal \ 8 cycles
+        lda pal+&600,y:sta updatepal \ 8 cycles
+        lda pal+&700,y:sta updatepal \ 8 cycles
         \ A total of 64 cycles, same as tricky's ULA palette code
 
         \ Following code up to and including foo takes
@@ -104,16 +120,16 @@ MODE 1
 VDU 23;8202;0;0;0;
 ?&FE22=&61
 FOR I%=0 TO 15
-?&FE21=(I%*16)+(I% EOR 7)
+init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
-REM*LOAD JAFFA 27E0
+REM*LOAD JAFFA 27D0
 REMCALL start
 FOR I%=0 TO 15
 J%=I%
 IF I%=3 THEN J%=15
 IF I%=15 THEN J%=3
-init_pal?(I%*2)=J%+J%*16
-init_pal?(I%*2+1)=I%*16+J%
+init_nula_pal?(I%*2)=J%+J%*16
+init_nula_pal?(I%*2+1)=I%*16+J%
 NEXT
 FOR Z%=pal TO pal+&7FF
 ?Z%=&00

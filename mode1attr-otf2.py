@@ -422,13 +422,12 @@ for original_colour in range(0, 16):
     r = p[original_colour*3+0] >> 4
     g = p[original_colour*3+1] >> 4
     b = p[original_colour*3+2] >> 4
-    nula_palette += bytes([(g<<4) | b, (original_colour<<4) | r])
+    nula_palette.extend(bytearray([(g<<4) | b, (original_colour<<4) | r]))
 
 def SFTODORENAME(palette, common_palette):
-    print palette
     assert len(palette) == 4
     bbc_to_original_colour_map = []
-    original_to_bbc_colour_map = [None]*16
+    original_to_bbc_colour_map = defaultdict(set)
     for i, (palette_group, common_palette_group) in enumerate(zip(palette, common_palette)):
         assert len(palette_group) == 4
         ordered = sorted(common_palette_group) + sorted(palette_group - common_palette_group)
@@ -436,7 +435,7 @@ def SFTODORENAME(palette, common_palette):
         bbc_to_original_colour_map.extend(ordered)
         for j, original_colour in enumerate(ordered):
             #print "Q", i, j, original_colour
-            original_to_bbc_colour_map[original_colour] = i*4+j
+            original_to_bbc_colour_map[original_colour].add(i*4+j)
     return bbc_to_original_colour_map, original_to_bbc_colour_map
 
 bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[0], common_palette)
@@ -453,7 +452,7 @@ for y in range(1, ysize):
     for bbc_colour, (previous_original_colour, new_original_colour) in enumerate(zip(previous_bbc_to_original_colour_map, bbc_to_original_colour_map)):
         if previous_original_colour != new_original_colour:
             line_changes += chr((bbc_colour<<4) | (new_original_colour ^ 7))
-    print y, len(line_changes)
+    #print y, len(line_changes)
     assert len(line_changes) <= 6
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 
@@ -466,37 +465,6 @@ for y in range(1, ysize):
 assert len(ula_palette_changes) == ysize * changes_per_line
 
 
-assert False
-
-palette = None
-
-if False: # TODO
-    # We need to renumber the palette because the 0th palette group has to contain colours
-    # 0-3, the 1st 4-7 and so on.
-    bbc_colour_map = [None]*16
-    bbc_colour = 0
-    print "Q", palette_by_y[0]
-    for palette_group in palette_by_y[0]:
-        for original_colour in palette_group:
-            bbc_colour_map[original_colour] = bbc_colour
-            bbc_colour += 1
-
-    bbc_image = open(sys.argv[2], "wb")
-
-    # Write the initial palette out at the start of the image; slideshow.bas will use this to
-    # program the palette.
-    for original_colour in range(0, 16):
-        p = image.getpalette()
-        r = p[original_colour*3+0] >> 4
-        g = p[original_colour*3+1] >> 4
-        b = p[original_colour*3+2] >> 4
-        bbc_colour = bbc_colour_map[original_colour]
-        #print bbc_colour, r, g, b
-        bbc_image.write(bytearray([(g<<4) | b, (bbc_colour<<4) | r]))
-
-palette_changes = [0]*8 # empty data for Y=0
-image_data = []
-
 # Write the image data out with appropriate bit-swizzling. We also make the
 # same attribute-constrained modifications to our in-memory image so we can
 # dump it out for viewing on the host to get an idea of how well we did without
@@ -505,40 +473,44 @@ image_data = []
 # the palette to 12-bit colour. We could, but it seems better for flipping back
 # and forth between the input and output to compare them to avoid this
 # additional difference.)
+image_data = bytearray()
 for y_block in range(0, ysize, 8):
     print "Y:", y_block
-    #y_block_bbc_colour_map = bbc_colour_map[:]
     for x in range(0, xsize, 3):
-        #print "X:", x
-        #bbc_colour_map = y_block_bbc_colour_map[:]
         for y in range(y_block, y_block+8):
-            #print "Y2:", y
-            if y > 0:
-                pass # TODO OUTPUT NEW PALETTE CHANGES
             pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
             palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette_by_y[y])
             pixel_map[x,y] = adjusted_pixels[0]
             pixel_map[x+1,y] = adjusted_pixels[1]
             pixel_map[x+2,y] = adjusted_pixels[2]
-            if False: # TODO
-                print "P%d" % (y,), actual_palette_by_y[y]
-                print palette_index, adjusted_pixels
-                assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
-                assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
-                attribute_value = bbc_colour_map[adjusted_pixels[0]] / 4
-                pixel2 = bbc_colour_map[adjusted_pixels[0]] % 4
-                pixel1 = bbc_colour_map[adjusted_pixels[1]] % 4
-                pixel0 = bbc_colour_map[adjusted_pixels[2]] % 4
-                def adjust_bbc_pixel(n):
-                    assert 0 <= n <= 3
-                    return ((n & 2) << 3) | (n & 1)
-                bbc_byte = ((adjust_bbc_pixel(pixel2) << 3) |
-                            (adjust_bbc_pixel(pixel1) << 2) |
-                            (adjust_bbc_pixel(pixel0) << 1) |
-                            adjust_bbc_pixel(attribute_value))
-                image_data.append(chr(bbc_byte))
+            bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
+            bbc_pixels = []
+            bbc_colour_range = set(range(palette_index*4, (palette_index+1)*4))
+            for original_colour in adjusted_pixels:
+                bbc_pixels.append(tuple(bbc_colour_range.intersection(original_to_bbc_colour_map[original_colour]))[0] % 4)
 
-#assert False # PUT THE DATA INTO bbc_image
+            #assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
+            #assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
+            #attribute_value = bbc_colour_map[adjusted_pixels[0]] / 4
+            def adjust_bbc_pixel(n):
+                assert 0 <= n <= 3
+                return ((n & 2) << 3) | (n & 1)
+            bbc_byte = ((adjust_bbc_pixel(bbc_pixels[0]) << 3) |
+                        (adjust_bbc_pixel(bbc_pixels[1]) << 2) |
+                        (adjust_bbc_pixel(bbc_pixels[2]) << 1) |
+                        adjust_bbc_pixel(palette_index))
+            image_data += chr(bbc_byte)
+
 
 # Save the attribute-constrained version of the image.
 image.save("z.png")
+
+assert len(ula_palette) == 16
+assert len(nula_palette) == 32
+assert len(ula_palette_changes) == changes_per_line * 256
+assert len(image_data) == 20*1024
+with open(sys.argv[2], "wb") as bbc_image:
+    bbc_image.write(ula_palette)
+    bbc_image.write(nula_palette)
+    bbc_image.write(ula_palette_changes)
+    bbc_image.write(image_data)
