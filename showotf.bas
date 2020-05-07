@@ -70,6 +70,7 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         \ 24=ditto .col1 lda #3 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette ; EOR #&40 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette
         \ A total of 64 cycles
 
+	\ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
         lda pal+&000,y:sta nulapal \ 8 cycles
         lda pal+&100,y:sta nulapal \ 8 cycles
         lda pal+&200,y:sta nulapal \ 8 cycles
@@ -125,7 +126,7 @@ pal?(I%+&001)=&00:pal?(I%+&101)=&00
 pal?(I%+&201)=&30:pal?(I%+&301)=&F0
 REM 3->blue
 pal?(I%+&202)=&00:pal?(I%+&302)=&00
-pal?(I%+&602)=&30:pal?(I%+&702)=&0F
+pal?(I%+&402)=&30:pal?(I%+&502)=&0F
 NEXT
 FOR I%=&3000 TO &7FFC STEP 4
 !I%=&EEEEEEEE

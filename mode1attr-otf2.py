@@ -331,7 +331,8 @@ common_palette_union = set.union(*common_palette)
 # Build up per-line palettes based on the common palette. Note that because the remaining
 # palette entries are changed on a per-line basis, we don't insist on each colour appearing
 # no more than once here; if it's helpful, we allow duplicates.
-for y in range(0, ysize): # TEMP HACKED TO START AT 6 FOR dEBUGGING
+palette_by_y = [None]*ysize
+for y in range(0, ysize):
     print
     print "Y", y
     palette = copy.deepcopy(common_palette)
@@ -392,120 +393,46 @@ for y in range(0, ysize): # TEMP HACKED TO START AT 6 FOR dEBUGGING
         palette_union = set.union(*palette)
         pending_unpaired_colours -= palette_union
 
+    for colour in pending_unpaired_colours:
+        for palette_group in palette:
+            if len(palette_group) < 4:
+                palette_group.add(colour)
+                break
+
     print "PUC", pending_unpaired_colours
     print "Y palette:", palette
-    # TODO: I think this assert could fail in principle, and we would need to pick an arbitrary
-    # palette group (should we prefer a full or empty one?) to put it in. Not a big deal, but
-    # I'm going to wait until it happens before I worry about that.
-    assert len(pending_unpaired_colours) == 0
+    palette_by_y[y] = palette
 
-    visualise_palette(palette, "zpal.png")
-    SFTODO = raw_input("")
+    #visualise_palette(palette, "zpal.png")
+    #SFTODO = raw_input("")
 
 
-
-
-
-SFTODO = raw_input("")
-assert False
-
-if True:
-    changes_by_line = [None]*ysize
-    current_palette = preferred_palette[0][:]
-    actual_palette_by_y = [None]*ysize
-    actual_palette_by_y[0] = copy.deepcopy(preferred_palette[0])
-    for y in range(1, ysize):
-        print "y", y
-        print "current", current_palette
-        print "preferred", preferred_palette[y]
-        palette_diffs = diff_palettes(current_palette, preferred_palette[y])
-        print palette_diffs
-        print sum(len(a) for a, b in palette_diffs)
-        # TODO: This is an insanely stupid algorithm, but trying to get *something*
-        # working!
-        diffs_dict = {}
-        while len(palette_diffs) > 0:
-            from_set, to_set = palette_diffs[0]
-            assert len(from_set) == len(to_set)
-            # The pairing here is arbitrary and it may not be optimal, but nothing about
-            # this algorithm is optimal...
-            changes = []
-            for from_colour, to_colour in zip(tuple(from_set), tuple(to_set)):
-                assert from_colour not in diffs_dict
-                diffs_dict[from_colour] = to_colour
-            palette_diffs.pop(0)
-        print y, diffs_dict
-        cycles = []
-        while len(diffs_dict) > 0:
-            cycle_start_colour = diffs_dict.keys()[0]
-            cycle = [cycle_start_colour]
-            while diffs_dict[cycle[-1]] != cycle_start_colour:
-                c = cycle[-1]
-                cycle.append(diffs_dict[c])
-                del diffs_dict[c]
-            del diffs_dict[cycle[-1]]
-            cycles.append(cycle)
-        # We just pick the longest cycle <= 4, we might have two 2-length cycles but we just
-        # don't try to merge them (which isn't hard really, but so much other stuff is
-        # sub-optimal already)
-        best_cycle = None
-        for cycle in cycles:
-            if len(cycle) <= 4 and (best_cycle is None or len(cycle) > len(best_cycle)):
-                best_cycle = cycle
-        print "best cycle", best_cycle
-        if best_cycle is not None:
-            for palette_group in current_palette:
-                for colour in list(palette_group):
-                    if colour in best_cycle:
-                        i = best_cycle.index(colour)
-                        palette_group.remove(colour)
-                        if i == len(best_cycle)-1:
-                            palette_group.add(best_cycle[0])
-                        else:
-                            palette_group.add(best_cycle[i+1])
-        changes_by_line[y] = best_cycle
-        actual_palette_by_y[y] = copy.deepcopy(current_palette)
-        print "PO%d" % (y,), actual_palette_by_y[y]
-
-if False:
-    current_palette = preferred_palette[0]
-    for y in range (1, ysize):
-        new_palette = current_palette[:]
-        changes = 0
-        palette_lock = set()
-        for hist_entry in hist_by_y[y]:
-            colour_set = hist_entry[0]
-            assert len(colour_set) == 2
-            if any(colour_set.issubset(palette_group) for palette_group in palette):
-                # This colour pair is already handled perfectly by the palette.
-                palette_lock.update(colour_set)
-            else:
-                if len(colour_set - palette_lock) == 2:
-                    assert False
 
 palette = None
 
-# We need to renumber the palette because the 0th palette group has to contain colours
-# 0-3, the 1st 4-7 and so on.
-bbc_colour_map = [None]*16
-bbc_colour = 0
-for palette_group in actual_palette_by_y[0]:
-    for original_colour in palette_group:
-        bbc_colour_map[original_colour] = bbc_colour
-        bbc_colour += 1
+if False: # TODO
+    # We need to renumber the palette because the 0th palette group has to contain colours
+    # 0-3, the 1st 4-7 and so on.
+    bbc_colour_map = [None]*16
+    bbc_colour = 0
+    print "Q", palette_by_y[0]
+    for palette_group in palette_by_y[0]:
+        for original_colour in palette_group:
+            bbc_colour_map[original_colour] = bbc_colour
+            bbc_colour += 1
 
-bbc_image = open(sys.argv[2], "wb")
+    bbc_image = open(sys.argv[2], "wb")
 
-# Write the initial palette out at the start of the image; slideshow.bas will use this to
-# program the palette.
-for original_colour in range(0, 16):
-    p = image.getpalette()
-    r = p[original_colour*3+0] >> 4
-    g = p[original_colour*3+1] >> 4
-    b = p[original_colour*3+2] >> 4
-    bbc_colour = bbc_colour_map[original_colour]
-    #print bbc_colour, r, g, b
-    bbc_image.write(bytearray([(g<<4) | b, (bbc_colour<<4) | r]))
+    # Write the initial palette out at the start of the image; slideshow.bas will use this to
+    # program the palette.
+    for original_colour in range(0, 16):
+        p = image.getpalette()
+        r = p[original_colour*3+0] >> 4
+        g = p[original_colour*3+1] >> 4
+        b = p[original_colour*3+2] >> 4
+        bbc_colour = bbc_colour_map[original_colour]
+        #print bbc_colour, r, g, b
+        bbc_image.write(bytearray([(g<<4) | b, (bbc_colour<<4) | r]))
 
 palette_changes = [0]*8 # empty data for Y=0
 image_data = []
@@ -520,45 +447,36 @@ image_data = []
 # additional difference.)
 for y_block in range(0, ysize, 8):
     print "Y:", y_block
-    y_block_bbc_colour_map = bbc_colour_map[:]
+    #y_block_bbc_colour_map = bbc_colour_map[:]
     for x in range(0, xsize, 3):
-        print "X:", x
-        bbc_colour_map = y_block_bbc_colour_map[:]
+        #print "X:", x
+        #bbc_colour_map = y_block_bbc_colour_map[:]
         for y in range(y_block, y_block+8):
-            print "Y2:", y
+            #print "Y2:", y
             if y > 0:
-                cycle = changes_by_line[y]
-                if cycle is not None:
-                    print "A", bbc_colour_map
-                    print cycle
-                    map_copy = bbc_colour_map[:]
-                    for from_colour, to_colour in zip(cycle, cycle[1:]+[cycle[0]]):
-                        print "C", from_colour, to_colour
-                        map_copy[to_colour] = bbc_colour_map[from_colour]
-                        # TODO: MAKE CHANGE IN palette_changes
-                    print "B", map_copy
-                    bbc_colour_map = map_copy
+                pass # TODO OUTPUT NEW PALETTE CHANGES
             pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
-            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, actual_palette_by_y[y])
+            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette_by_y[y])
             pixel_map[x,y] = adjusted_pixels[0]
             pixel_map[x+1,y] = adjusted_pixels[1]
             pixel_map[x+2,y] = adjusted_pixels[2]
-            print "P%d" % (y,), actual_palette_by_y[y]
-            print palette_index, adjusted_pixels
-            assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
-            assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
-            attribute_value = bbc_colour_map[adjusted_pixels[0]] / 4
-            pixel2 = bbc_colour_map[adjusted_pixels[0]] % 4
-            pixel1 = bbc_colour_map[adjusted_pixels[1]] % 4
-            pixel0 = bbc_colour_map[adjusted_pixels[2]] % 4
-            def adjust_bbc_pixel(n):
-                assert 0 <= n <= 3
-                return ((n & 2) << 3) | (n & 1)
-            bbc_byte = ((adjust_bbc_pixel(pixel2) << 3) |
-                        (adjust_bbc_pixel(pixel1) << 2) |
-                        (adjust_bbc_pixel(pixel0) << 1) |
-                        adjust_bbc_pixel(attribute_value))
-            image_data.append(chr(bbc_byte))
+            if False: # TODO
+                print "P%d" % (y,), actual_palette_by_y[y]
+                print palette_index, adjusted_pixels
+                assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
+                assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
+                attribute_value = bbc_colour_map[adjusted_pixels[0]] / 4
+                pixel2 = bbc_colour_map[adjusted_pixels[0]] % 4
+                pixel1 = bbc_colour_map[adjusted_pixels[1]] % 4
+                pixel0 = bbc_colour_map[adjusted_pixels[2]] % 4
+                def adjust_bbc_pixel(n):
+                    assert 0 <= n <= 3
+                    return ((n & 2) << 3) | (n & 1)
+                bbc_byte = ((adjust_bbc_pixel(pixel2) << 3) |
+                            (adjust_bbc_pixel(pixel1) << 2) |
+                            (adjust_bbc_pixel(pixel0) << 1) |
+                            adjust_bbc_pixel(attribute_value))
+                image_data.append(chr(bbc_byte))
 
 #assert False # PUT THE DATA INTO bbc_image
 
