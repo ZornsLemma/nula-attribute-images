@@ -122,10 +122,10 @@ REM 3->red
 pal?(I%+&000)=&3F:pal?(I%+&100)=&00
 REM 3->green
 pal?(I%+&001)=&00:pal?(I%+&101)=&00
-pal?(I%+&301)=&30:pal?(I%+&401)=&F0
+pal?(I%+&201)=&30:pal?(I%+&301)=&F0
 REM 3->blue
-pal?(I%+&302)=&00:pal?(I%+&402)=&00
-pal?(I%+&602)=&30:pal?(I%+&702)=&0F
+pal?(I%+&202)=&00:pal?(I%+&302)=&00
+pal?(I%+&402)=&30:pal?(I%+&502)=&0F
 NEXT
 FOR I%=&3000 TO &7FFC STEP 4
 !I%=&EEEEEEEE
