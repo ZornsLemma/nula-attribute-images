@@ -1,2 +1,3 @@
 puttext "boot.txt", "!BOOT", &0000
 putbasic "showotf.bas", "SSHOW"
+putfile "output-otf/IMG_20180609_1900447-cropped-240x256-16c.bbc", "JAFFA", &2fe0

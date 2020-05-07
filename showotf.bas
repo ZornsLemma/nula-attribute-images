@@ -123,6 +123,8 @@ VDU 23;8202;0;0;0;
 FOR I%=0 TO 15
 ?&FE21=(I%*16)+(I% EOR 7)
 NEXT
+*LOAD JAFFA 2800
+CALL start
 FOR Z%=pal TO pal+&7FF
 ?Z%=&00
 NEXT
