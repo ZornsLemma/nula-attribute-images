@@ -324,10 +324,89 @@ assert len(pending_unpaired_colours) == 0
 print "PUC", pending_unpaired_colours
 print "Common palette:", common_palette
 visualise_palette(common_palette, "zpal.png")
+common_palette_union = set.union(*common_palette)
+
+# TODO: Code very similar to previous common_palette build up, but let's just write it
+# out again for the moment to ease tinkering
+# Build up per-line palettes based on the common palette. Note that because the remaining
+# palette entries are changed on a per-line basis, we don't insist on each colour appearing
+# no more than once here; if it's helpful, we allow duplicates.
+for y in range(0, ysize): # TEMP HACKED TO START AT 6 FOR dEBUGGING
+    print
+    print "Y", y
+    palette = copy.deepcopy(common_palette)
+    pending_unpaired_colours = set()
+    for colour_set, freq in hist_by_y[y]:
+        palette_union = set.union(*palette) # note that while valid, this may lose the fact some colours are in the palette multiple times, so its *length* is kind of meaningless
+        palette_entries_used = sum(len(palette_group) for palette_group in palette) + len(pending_unpaired_colours)
+        print
+        print palette_entries_used, palette, pending_unpaired_colours
+        print "B", colour_set, freq
+        assert palette_entries_used <= 16
+        palette_full = (palette_entries_used == 16)
+        if palette_full and len(pending_unpaired_colours) == 0:
+            break
+        # If the current palette perfectly handles this colour set, no action is needed.
+        if any(colour_set.issubset(palette_group) for palette_group in palette):
+            continue
+        assert 1 <= len(colour_set) <= 2
+        if len(colour_set) == 1:
+            new_colour = tuple(colour_set)[0]
+            if new_colour not in palette_union and new_colour not in pending_unpaired_colours and not palette_full:
+                pending_unpaired_colours.add(new_colour)
+        else:
+            best_palette_group = None
+            colour_a = tuple(colour_set)[0]
+            colour_b = tuple(colour_set)[1]
+            print "AAA", colour_a, colour_b
+            for palette_group in palette:
+                if colour_a in palette_group:
+                    print "QQ"
+                    assert colour_b not in palette_group
+                    if len(palette_group) < 4 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                        best_palette_group = palette_group
+                elif colour_b in palette_group:
+                    print "ZZ"
+                    assert colour_a not in palette_group
+                    if len(palette_group) < 4 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                        best_palette_group = palette_group
+            if best_palette_group is not None:
+                print "WW", palette_full
+                # We found a palette group with one of our two colours and room for the other.
+                new_colour = tuple(colour_set - best_palette_group)[0]
+                print "WW2", new_colour, colour_set - best_palette_group
+                if not palette_full or new_colour in pending_unpaired_colours:
+                    best_palette_group.add(new_colour)
+            else:
+                # The only way we're going to be able to use this colour pair is by adding them
+                # both to the same palette group.
+                best_palette_group = None
+                for palette_group in palette:
+                    if len(palette_group) <= 2 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                        best_palette_group = palette_group
+                if best_palette_group is not None:
+                    new_palette_entries_taken = len(colour_set - pending_unpaired_colours)
+                    if palette_entries_used + new_palette_entries_taken <= 16:
+                        best_palette_group.update(colour_set)
+
+        palette_union = set.union(*palette)
+        pending_unpaired_colours -= palette_union
+
+    print "PUC", pending_unpaired_colours
+    print "Y palette:", palette
+    # TODO: I think this assert could fail in principle, and we would need to pick an arbitrary
+    # palette group (should we prefer a full or empty one?) to put it in. Not a big deal, but
+    # I'm going to wait until it happens before I worry about that.
+    assert len(pending_unpaired_colours) == 0
+
+    visualise_palette(palette, "zpal.png")
+    SFTODO = raw_input("")
+
+
+
+
+
 SFTODO = raw_input("")
-
-
-
 assert False
 
 if True:
