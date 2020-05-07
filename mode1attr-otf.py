@@ -239,7 +239,7 @@ pixel_map = image.load()
 # up, but while I'm starting to explore this let's not complicate things.
 
 preferred_palette = [None]*ysize
-hist_by_y = [None]*256
+hist_by_y = [None]*ysize
 for y in range(0, ysize):
     hist = defaultdict(int)
     for x in range(0, xsize, 3):
@@ -254,31 +254,82 @@ for y in range(0, ysize):
     hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
     hist_by_y[y] = hist
     #print y, hist
-    #preferred_palette[y] = palette_from_hist(hist)
+    preferred_palette[y] = palette_from_hist(hist)
 
-if False:
-    current_palette = preferred_palette[0]
+if True:
+    current_palette = preferred_palette[0][:]
     for y in range (1, ysize):
         print "current", current_palette
         print "preferred", preferred_palette[y]
         palette_diffs = diff_palettes(current_palette, preferred_palette[y])
-        #print palette_diffs
+        print palette_diffs
         print sum(len(a) for a, b in palette_diffs)
+        # TODO: This is an insanely stupid algorithm, but trying to get *something*
+        # working!
+        changes = []
+        for from_set, to_set in palette_diffs:
+            print "A", from_set, to_set
+            for from_colour, to_colour in zip(tuple(from_set), tuple(to_set)):
+                changes.append((from_colour, to_colour))
+                changes.append((to_colour, from_colour))
+                for palette_entry in current_palette:
+                    if from_colour in palette_entry:
+                        assert to_colour not in palette_entry
+                        palette_entry.remove(from_colour)
+                        palette_entry.add(to_colour)
+                    elif to_colour in palette_entry:
+                        assert from_colour not in palette_entry
+                        palette_entry.remove(to_colour)
+                        palette_entry.add(from_colour)
+                if len(changes) == 4:
+                    break
+            if len(changes) == 4:
+                break
+        print changes
+        print "new pal", current_palette
+        assert False
+        diffs_dict = {}
+        while len(palette_diffs) > 0:
+            from_set, to_set = palette_diffs[0]
+            assert len(from_set) == len(to_set)
+            # The pairing here is arbitrary and it may not be optimal, but nothing about
+            # this algorithm is optimal...
+            changes = []
+            for from_colour, to_colour in zip(tuple(from_set), tuple(to_set)):
+                assert from_colour not in diffs_dict
+                # No attempt to identify cycles, we always do pairs
+                changes.append((from_colour, to_colour))
+                changes.append((to_colour, from_colour))
+                current_palette
+                diffs_dict[from_colour] = to_colour
+            palette_diffs.pop(0)
+        changes = []
+        while len(diffs_dict) > 0 and len(changes) < 4:
+            from_colour, to_colour = diffs_dict.items()[0]
+            # No attempt to identify cycles, we always do pairs
+            changes.append((from_colour, to_colour))
+            changes.append((to_colour, from_colour))
+            del diffs_dict[from_colour]
+        print y, changes
+
+
         current_palette = preferred_palette[y] # SFTODO TOO SIMPLE!
 
-current_palette = preferred_palette[0]
-for y in range (1, ysize):
-    new_palette = current_palette[:]
-    changes = 0
-    palette_lock = set()
-    for hist_entry in hist_by_y[y]:
-        colour_set = hist_entry[0]
-        assert len(colour_set) == 2
-        if any(colour_set.issubset(palette_group) for palette_group in palette):
-            # This colour pair is already handled perfectly by the palette.
-            palette_lock.update(colour_set)
-        else:
-            if len(colour_set - palette_lock) == 2:
+if False:
+    current_palette = preferred_palette[0]
+    for y in range (1, ysize):
+        new_palette = current_palette[:]
+        changes = 0
+        palette_lock = set()
+        for hist_entry in hist_by_y[y]:
+            colour_set = hist_entry[0]
+            assert len(colour_set) == 2
+            if any(colour_set.issubset(palette_group) for palette_group in palette):
+                # This colour pair is already handled perfectly by the palette.
+                palette_lock.update(colour_set)
+            else:
+                if len(colour_set - palette_lock) == 2:
+                    assert False
 
 
 

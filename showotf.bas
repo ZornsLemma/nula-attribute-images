@@ -11,6 +11,7 @@ CrtcR2HorizontalSyncPosition=2
 CrtcR3SyncPulseWidths=3
 nulapal=&FE23
 pal=&3000-&800
+init_pal=pal-32
 FOR opt%=0 TO 3 STEP 3
 P%=&900:REM we need to avoid page crossing so don't DIM code space
 [OPT opt%
@@ -95,25 +96,6 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
 
 .dummy
         equb &0f
-
-.init_pal
-        \ Note each pair is reversed, but equw handles that (this is only temporary though)
-        equw &0000
-        equw &1111
-        equw &2222
-        equw &3FFF
-        equw &4444
-        equw &5555
-        equw &6666
-        equw &7777
-        equw &8888
-        equw &9999
-        equw &AAAA
-        equw &BBBB
-        equw &CCCC
-        equw &DDDD
-        equw &EEEE
-        equw &F333
 ]
 NEXT
 *TV255,1
@@ -123,8 +105,12 @@ VDU 23;8202;0;0;0;
 FOR I%=0 TO 15
 ?&FE21=(I%*16)+(I% EOR 7)
 NEXT
-*LOAD JAFFA 2800
+*LOAD JAFFA 27E0
 CALL start
+FOR I%=0 TO 15
+I%?init_pal=I%+I%*16
+(I%+1)?init_pal=I%+I%*16
+NEXT
 FOR Z%=pal TO pal+&7FF
 ?Z%=&00
 NEXT
