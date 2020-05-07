@@ -14,7 +14,7 @@ nulapal=&FE23
 pal=&3000-&800
 init_nula_pal=pal-32
 init_ula_pal=init_nula_pal-16
-updatepal=nulapal:REM sometimes will want ulapal, sometimes nulapal
+updatepal=ulapal:REM sometimes will want ulapal, sometimes nulapal
 FOR opt%=0 TO 3 STEP 3
 P%=&900:REM we need to avoid page crossing so don't DIM code space
 [OPT opt%
@@ -122,8 +122,8 @@ VDU 23;8202;0;0;0;
 FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
-REM*LOAD JAFFA 27D0
-REMCALL start
+*LOAD JAFFA 27D0
+CALL start
 FOR I%=0 TO 15
 J%=I%
 IF I%=3 THEN J%=15
