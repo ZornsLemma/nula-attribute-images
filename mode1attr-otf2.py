@@ -399,6 +399,15 @@ for y in range(0, ysize):
                 palette_group.add(colour)
                 break
 
+    # Just to keep things simple (since it won't hurt for now) if we have some spare entries
+    # in the palette we force a colour into them so all palettes do have 16 entries.
+    for palette_group in palette:
+        while len(palette_group) < 4:
+            new_colour = tuple(set(range(0, 16)) - palette_group)[0]
+            palette_group.add(new_colour)
+
+
+
     print "PUC", pending_unpaired_colours
     print "Y palette:", palette
     palette_by_y[y] = palette
@@ -416,6 +425,7 @@ for original_colour in range(0, 16):
     nula_palette += bytes([(g<<4) | b, (original_colour<<4) | r])
 
 def SFTODORENAME(palette, common_palette):
+    print palette
     assert len(palette) == 4
     bbc_to_original_colour_map = []
     original_to_bbc_colour_map = [None]*16
@@ -425,7 +435,7 @@ def SFTODORENAME(palette, common_palette):
         assert len(ordered) == 4
         bbc_to_original_colour_map.extend(ordered)
         for j, original_colour in enumerate(ordered):
-            print "Q", i, j, original_colour
+            #print "Q", i, j, original_colour
             original_to_bbc_colour_map[original_colour] = i*4+j
     return bbc_to_original_colour_map, original_to_bbc_colour_map
 
@@ -433,6 +443,29 @@ bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by
 ula_palette = bytearray()
 for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
     ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
+
+changes_per_line = 8 # in file, not "can be done without flicker"
+ula_palette_changes = ula_palette[0:changes_per_line] # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
+previous_bbc_to_original_colour_map = bbc_to_original_colour_map
+for y in range(1, ysize):
+    bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
+    line_changes = bytearray()
+    for bbc_colour, (previous_original_colour, new_original_colour) in enumerate(zip(previous_bbc_to_original_colour_map, bbc_to_original_colour_map)):
+        if previous_original_colour != new_original_colour:
+            line_changes += chr((bbc_colour<<4) | (new_original_colour ^ 7))
+    print y, len(line_changes)
+    assert len(line_changes) <= 6
+    previous_bbc_to_original_colour_map = bbc_to_original_colour_map
+
+    # We always make all the changes, so if we aren't using the maximum number of changes
+    # we copy the corresponding bytes from the previous line, which will be effectively
+    # no-ops.
+    line_changes.extend(ula_palette_changes[-(changes_per_line-len(line_changes)):])
+    assert len(line_changes) == changes_per_line
+    ula_palette_changes.extend(line_changes)
+assert len(ula_palette_changes) == ysize * changes_per_line
+
+
 assert False
 
 palette = None
