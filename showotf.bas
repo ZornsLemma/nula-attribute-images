@@ -67,7 +67,7 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
 
 
 \ Wait out line Y=0
-        ldx #246
+        ldx #207
 .waitt
         pha : pla : pha : pla
         dex
