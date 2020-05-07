@@ -105,11 +105,14 @@ VDU 23;8202;0;0;0;
 FOR I%=0 TO 15
 ?&FE21=(I%*16)+(I% EOR 7)
 NEXT
-*LOAD JAFFA 27E0
-CALL start
+REM*LOAD JAFFA 27E0
+REMCALL start
 FOR I%=0 TO 15
-I%?init_pal=I%+I%*16
-(I%+1)?init_pal=I%+I%*16
+J%=I%
+IF I%=3 THEN J%=15
+IF I%=15 THEN J%=3
+init_pal?(I%*2)=J%+J%*16
+init_pal?(I%*2+1)=I%*16+J%
 NEXT
 FOR Z%=pal TO pal+&7FF
 ?Z%=&00
