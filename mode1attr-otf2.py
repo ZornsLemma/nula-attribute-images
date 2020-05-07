@@ -266,11 +266,15 @@ common_palette = [set() for i in range(0, 4)]
 common_colours = 10
 pending_unpaired_colours = set()
 for colour_set, freq in hist_all:
-    print "A", colour_set, freq
     palette_union = set.union(*common_palette)
     palette_union_with_unpaired = palette_union.union(pending_unpaired_colours)
+    print
+    print len(palette_union_with_unpaired), palette_union, pending_unpaired_colours
+    print "A", colour_set, freq
     assert len(palette_union_with_unpaired) <= common_colours
-    palette_full = (len(palette_union) == common_colours)
+    palette_full = (len(palette_union_with_unpaired) == common_colours)
+    if palette_full and len(pending_unpaired_colours) == 0:
+        break
     assert len(colour_set) <= 2
     if colour_set.issubset(palette_union):
         # Nothing to do; we only allow each colour to appear once in the common
@@ -282,42 +286,33 @@ for colour_set, freq in hist_all:
             # anywhere yet to keep options open for paired colours.
             pending_unpaired_colours.add(tuple(colour_set)[0])
     else:
-        new_colours = colour_set - palette_union_with_unpaired
+        new_colours = colour_set - palette_union
         colours_needed = len(new_colours)
-        assert colours_needed <= 2
-        if colours_needed > (common_colours - len(palette_union_with_unpaired)):
-            # Not enough space for the pair, so not much we can do.
-            # TODO: Should we include the colour as a single colour? Not sure.
-            pass
-        elif colours_needed == 1:
+        assert 1 <= colours_needed <= 2
+        if colours_needed == 1:
             new_colour = tuple(new_colours)[0]
             old_colour = tuple(colour_set - set([new_colour]))[0]
-            if old_colour in pending_unpaired_colours:
-                if not palette_full or new_colour in pending_unpaired_colours:
-                    new_colours = colour_set
-                    colours_needed = 2
-                    assert old_colour in pending_unpaired_colours
-            elif not palette_full:
+            if not palette_full or new_colour in pending_unpaired_colours:
                 # If there's space in the palette group containing old_colour, add
                 # new_colour to it. Otherwise there's not much we can do.
                 # TODO: Should we include the colour as a single colour? Not sure.
-                found = False
                 for palette_group in common_palette:
                     if old_colour in palette_group:
-                        found = True
                         if len(palette_group) < 4:
                             palette_group.add(new_colour)
                         break
-        if colours_needed == 2:
-            # Add both colours to the emptiest palette group we can find. If
-            # there isn't one (unlikely, but if common_colours is high it may
-            # happen) there's not much we can do.
-            best_palette_group = None
-            for palette_group in common_palette:
-                if len(palette_group) <= 2 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                    best_palette_group = palette_group
-            if best_palette_group is not None:
-                best_palette_group.update(new_colours)
+        else:
+            if len(palette_union_with_unpaired.union(new_colours)) <= common_colours:
+                # Add both colours to the emptiest palette group we can find. If
+                # there isn't one (unlikely, but if common_colours is high it may
+                # happen) there's not much we can do.
+                best_palette_group = None
+                for palette_group in common_palette:
+                    if len(palette_group) <= 2 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
+                        best_palette_group = palette_group
+                if best_palette_group is not None:
+                    best_palette_group.update(new_colours)
+
         palette_union = set.union(*common_palette)
         pending_unpaired_colours -= palette_union
 
