@@ -323,7 +323,7 @@ assert len(pending_unpaired_colours) == 0
 
 print "PUC", pending_unpaired_colours
 print "Common palette:", common_palette
-visualise_palette(common_palette, "zpal.png")
+#visualise_palette(common_palette, "zpal.png")
 common_palette_union = set.union(*common_palette)
 
 # TODO: Code very similar to previous common_palette build up, but let's just write it
@@ -407,6 +407,33 @@ for y in range(0, ysize):
     #SFTODO = raw_input("")
 
 
+nula_palette = bytearray()
+for original_colour in range(0, 16):
+    p = image.getpalette()
+    r = p[original_colour*3+0] >> 4
+    g = p[original_colour*3+1] >> 4
+    b = p[original_colour*3+2] >> 4
+    nula_palette += bytes([(g<<4) | b, (original_colour<<4) | r])
+
+def SFTODORENAME(palette, common_palette):
+    assert len(palette) == 4
+    bbc_to_original_colour_map = []
+    original_to_bbc_colour_map = [None]*16
+    for i, (palette_group, common_palette_group) in enumerate(zip(palette, common_palette)):
+        assert len(palette_group) == 4
+        ordered = sorted(common_palette_group) + sorted(palette_group - common_palette_group)
+        assert len(ordered) == 4
+        bbc_to_original_colour_map.extend(ordered)
+        for j, original_colour in enumerate(ordered):
+            print "Q", i, j, original_colour
+            original_to_bbc_colour_map[original_colour] = i*4+j
+    return bbc_to_original_colour_map, original_to_bbc_colour_map
+
+bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[0], common_palette)
+ula_palette = bytearray()
+for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
+    ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
+assert False
 
 palette = None
 
