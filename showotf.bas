@@ -123,6 +123,21 @@ FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
 *LOAD JAFFA 27D0
+FOR Y%=0 TO 31
+S%=&3000+Y%*640+30*8
+FOR X%=0 TO 15
+FOR Y2%=0 TO 7
+A%=X% MOD 4
+IF A%=0 THEN ?S%=&0
+IF A%=1 THEN ?S%=8+4+2
+IF A%=2 THEN ?S%=128+64+32
+IF A%=3 THEN ?S%=128+64+32+8+4+2
+B%=X% DIV 4
+?S%=(?S%)+((B% AND 2)*8)+(B% AND 1)
+S%=S%+1
+NEXT
+NEXT
+NEXT
 CALL start
 FOR I%=0 TO 15
 J%=I%
