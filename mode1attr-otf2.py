@@ -444,7 +444,7 @@ for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
     ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
 
 changes_per_line = 8 # in file, not "can be done without flicker"
-ula_palette_changes = ula_palette[0:changes_per_line] # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
+ula_palette_changes = bytearray([0]*changes_per_line) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 for y in range(1, ysize):
     bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
@@ -457,9 +457,13 @@ for y in range(1, ysize):
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 
     # We always make all the changes, so if we aren't using the maximum number of changes
-    # we copy the corresponding bytes from the previous line, which will be effectively
-    # no-ops.
-    line_changes.extend(ula_palette_changes[-(changes_per_line-len(line_changes)):])
+    # we must provide some safe no-op data. If we have no changes at all we copy the
+    # previous line's changes, otherwise we just redo the last change several times.
+    if len(line_changes) == 0:
+        line_changes = ula_palette[-changes_per_line:]
+    else:
+        while len(line_changes) < changes_per_line:
+            line_changes += chr(line_changes[-1])
     assert len(line_changes) == changes_per_line
     ula_palette_changes.extend(line_changes)
 assert len(ula_palette_changes) == ysize * changes_per_line
