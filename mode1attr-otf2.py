@@ -316,7 +316,10 @@ for colour_set, freq in hist_all:
         palette_union = set.union(*common_palette)
         pending_unpaired_colours -= palette_union
 
-# TODO: DEAL WITH PENDING UNPAIRED COLOURS
+# TODO: I think this assert could fail in principle, and we would need to pick an arbitrary
+# palette group (should we prefer a full or empty one?) to put it in. Not a big deal, but
+# I'm going to wait until it happens before I worry about that.
+assert len(pending_unpaired_colours) == 0
 
 print "PUC", pending_unpaired_colours
 print "Common palette:", common_palette
