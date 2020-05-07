@@ -14,6 +14,7 @@ import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFont
 import colorsys
+import copy
 import math
 import subprocess
 import sys
@@ -257,8 +258,11 @@ for y in range(0, ysize):
     preferred_palette[y] = palette_from_hist(hist)
 
 if True:
+    changes_by_line = [None]*ysize
     current_palette = preferred_palette[0][:]
-    for y in range (1, ysize):
+    actual_palette_by_y = [None]*ysize
+    actual_palette_by_y[0] = copy.deepcopy(preferred_palette[0])
+    for y in range(1, ysize):
         print "y", y
         print "current", current_palette
         print "preferred", preferred_palette[y]
@@ -307,6 +311,9 @@ if True:
                             palette_group.add(best_cycle[0])
                         else:
                             palette_group.add(best_cycle[i+1])
+        changes_by_line[y] = best_cycle
+        actual_palette_by_y[y] = copy.deepcopy(current_palette)
+        print "PO%d" % (y,), actual_palette_by_y[y]
 
 if False:
     current_palette = preferred_palette[0]
@@ -324,52 +331,20 @@ if False:
                 if len(colour_set - palette_lock) == 2:
                     assert False
 
-
-
-
-
-
-
-
-
-
-assert False
-
-
-# Examine the pixel triples in the image to build the histogram of colour pairs.
-data = list(image.getdata())
-hist = defaultdict(int)
-for i in range(0, len(data), 3):
-    pixel_triple = data[i:i+3]
-    def do_pair(i, j):
-        # We use a set because the order of the two colours is irrelevant.
-        if pixel_triple[i] != pixel_triple[j]:
-            hist[frozenset([pixel_triple[i], pixel_triple[j]])] += 1
-    do_pair(0, 1)
-    do_pair(0, 2)
-    do_pair(1, 2)
-hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
-
-palette = [set() for i in range(0, 4)]
-
-for hist_entry in hist:
-    print "%s\t%s" % (hist_entry[0], hist_entry[1])
-#assert False
-
-# Work through the colour pairs in order from most common to least common.
+palette = None
 
 # We need to renumber the palette because the 0th palette group has to contain colours
 # 0-3, the 1st 4-7 and so on.
 bbc_colour_map = [None]*16
 bbc_colour = 0
-for palette_group in palette:
+for palette_group in actual_palette_by_y[0]:
     for original_colour in palette_group:
         bbc_colour_map[original_colour] = bbc_colour
         bbc_colour += 1
 
 bbc_image = open(sys.argv[2], "wb")
 
-# Write the palette out at the start of the image; slideshow.bas will use this to
+# Write the initial palette out at the start of the image; slideshow.bas will use this to
 # program the palette.
 for original_colour in range(0, 16):
     p = image.getpalette()
@@ -378,7 +353,10 @@ for original_colour in range(0, 16):
     b = p[original_colour*3+2] >> 4
     bbc_colour = bbc_colour_map[original_colour]
     #print bbc_colour, r, g, b
-    bbc_image.write(bytearray([(bbc_colour<<4) | r, (g<<4) | b]))
+    bbc_image.write(bytearray([(g<<4) | b, (bbc_colour<<4) | r]))
+
+palette_changes = [0]*8 # empty data for Y=0
+image_data = []
 
 # Write the image data out with appropriate bit-swizzling. We also make the
 # same attribute-constrained modifications to our in-memory image so we can
@@ -390,13 +368,31 @@ for original_colour in range(0, 16):
 # additional difference.)
 for y_block in range(0, ysize, 8):
     print "Y:", y_block
+    y_block_bbc_colour_map = bbc_colour_map[:]
     for x in range(0, xsize, 3):
+        print "X:", x
+        bbc_colour_map = y_block_bbc_colour_map[:]
         for y in range(y_block, y_block+8):
+            print "Y2:", y
+            if y > 0:
+                cycle = changes_by_line[y]
+                if cycle is not None:
+                    print "A", bbc_colour_map
+                    print cycle
+                    map_copy = bbc_colour_map[:]
+                    for from_colour, to_colour in zip(cycle, cycle[1:]+[cycle[0]]):
+                        print "C", from_colour, to_colour
+                        map_copy[to_colour] = bbc_colour_map[from_colour]
+                        # TODO: MAKE CHANGE IN palette_changes
+                    print "B", map_copy
+                    bbc_colour_map = map_copy
             pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
-            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette)
+            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, actual_palette_by_y[y])
             pixel_map[x,y] = adjusted_pixels[0]
             pixel_map[x+1,y] = adjusted_pixels[1]
             pixel_map[x+2,y] = adjusted_pixels[2]
+            print "P%d" % (y,), actual_palette_by_y[y]
+            print palette_index, adjusted_pixels
             assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
             assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
             attribute_value = bbc_colour_map[adjusted_pixels[0]] / 4
@@ -410,7 +406,9 @@ for y_block in range(0, ysize, 8):
                         (adjust_bbc_pixel(pixel1) << 2) |
                         (adjust_bbc_pixel(pixel0) << 1) |
                         adjust_bbc_pixel(attribute_value))
-            bbc_image.write(chr(bbc_byte))
+            image_data.append(chr(bbc_byte))
+
+#assert False # PUT THE DATA INTO bbc_image
 
 # Save the attribute-constrained version of the image.
 image.save("z.png")
