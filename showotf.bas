@@ -49,7 +49,7 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         bpl init_col
 
 \ Wait out line Y=0
-        ldx #237
+        ldx #236
 .waitt
         pha : pla : pha : pla
         dex
@@ -118,9 +118,9 @@ FOR Z%=pal TO pal+&7FF
 ?Z%=&00
 NEXT
 FOR I%=1 TO 255 STEP 3
-pal?(I%+&000)=&3F:pal?(I%+&100)=&00:REM 3->red
+pal?(I%+&600)=&3F:pal?(I%+&700)=&00:REM 3->red
 pal?(I%+&001)=&30:pal?(I%+&101)=&F0:REM 3->green
-pal?(I%+&002)=&30:pal?(I%+&102)=&0F:REM 3->blue
+pal?(I%+&302)=&30:pal?(I%+&402)=&0F:REM 3->blue
 NEXT
 FOR I%=&3000 TO &7FFC STEP 4
 !I%=&EEEEEEEE
