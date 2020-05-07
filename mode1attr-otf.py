@@ -122,6 +122,9 @@ def best_effort_pixel_representation(pixels, palette):
             best_adjusted_pixels = adjusted_pixels
     return best_palette_group, best_adjusted_pixels
 
+def canonicalise_palette(palette):
+    return sorted(palette, key=lambda palette_group: min(palette_group))
+
 def palette_from_hist(hist):
     palette = [set() for i in range(0, 4)]
     for hist_entry in hist:
@@ -186,7 +189,7 @@ def palette_from_hist(hist):
     #print "Final palette:", palette
     #visualise_palette(palette, "zpal.png")
     
-    return palette
+    return canonicalise_palette(palette)
 
 def visualise_palette(palette, filename):
     cell_size = 64
@@ -212,6 +215,13 @@ def visualise_palette(palette, filename):
     output.show() # TODO: temporary?
     output.save(filename)
 
+def diff_palettes(old, new):
+    diffs = []
+    for old_palette_group, new_palette_group in zip(old, new):
+        diffs.append((old_palette_group - new_palette_group, new_palette_group - old_palette_group))
+    return diffs
+
+
 
 
 if len(sys.argv) != 3:
@@ -225,6 +235,7 @@ assert ysize == 256
 # TODO: verify it's an indexed colour image with 16 or fewer colours
 pixel_map = image.load()
 
+preferred_palette = [None]*ysize
 for y in range(0, ysize):
     hist = defaultdict(int)
     for x in range(0, xsize, 3):
@@ -237,8 +248,19 @@ for y in range(0, ysize):
         do_pair(0, 2)
         do_pair(1, 2)
     hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
-    print y, hist
-    preferred_palette = palette_from_hist(hist)
+    #print y, hist
+    preferred_palette[y] = palette_from_hist(hist)
+
+current_palette = preferred_palette[0]
+for y in range (1, ysize):
+    print "current", current_palette
+    print "preferred", preferred_palette[y]
+    palette_diffs = diff_palettes(current_palette, preferred_palette[y])
+    #print palette_diffs
+    print sum(len(a) for a, b in palette_diffs)
+    current_palette = preferred_palette[y] # SFTODO TOO SIMPLE!
+
+
 
 
 
