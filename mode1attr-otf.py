@@ -259,6 +259,7 @@ for y in range(0, ysize):
 if True:
     current_palette = preferred_palette[0][:]
     for y in range (1, ysize):
+        print "y", y
         print "current", current_palette
         print "preferred", preferred_palette[y]
         palette_diffs = diff_palettes(current_palette, preferred_palette[y])
@@ -266,28 +267,6 @@ if True:
         print sum(len(a) for a, b in palette_diffs)
         # TODO: This is an insanely stupid algorithm, but trying to get *something*
         # working!
-        changes = []
-        for from_set, to_set in palette_diffs:
-            print "A", from_set, to_set
-            for from_colour, to_colour in zip(tuple(from_set), tuple(to_set)):
-                changes.append((from_colour, to_colour))
-                changes.append((to_colour, from_colour))
-                for palette_entry in current_palette:
-                    if from_colour in palette_entry:
-                        assert to_colour not in palette_entry
-                        palette_entry.remove(from_colour)
-                        palette_entry.add(to_colour)
-                    elif to_colour in palette_entry:
-                        assert from_colour not in palette_entry
-                        palette_entry.remove(to_colour)
-                        palette_entry.add(from_colour)
-                if len(changes) == 4:
-                    break
-            if len(changes) == 4:
-                break
-        print changes
-        print "new pal", current_palette
-        assert False
         diffs_dict = {}
         while len(palette_diffs) > 0:
             from_set, to_set = palette_diffs[0]
@@ -297,23 +276,37 @@ if True:
             changes = []
             for from_colour, to_colour in zip(tuple(from_set), tuple(to_set)):
                 assert from_colour not in diffs_dict
-                # No attempt to identify cycles, we always do pairs
-                changes.append((from_colour, to_colour))
-                changes.append((to_colour, from_colour))
-                current_palette
                 diffs_dict[from_colour] = to_colour
             palette_diffs.pop(0)
-        changes = []
-        while len(diffs_dict) > 0 and len(changes) < 4:
-            from_colour, to_colour = diffs_dict.items()[0]
-            # No attempt to identify cycles, we always do pairs
-            changes.append((from_colour, to_colour))
-            changes.append((to_colour, from_colour))
-            del diffs_dict[from_colour]
-        print y, changes
-
-
-        current_palette = preferred_palette[y] # SFTODO TOO SIMPLE!
+        print y, diffs_dict
+        cycles = []
+        while len(diffs_dict) > 0:
+            cycle_start_colour = diffs_dict.keys()[0]
+            cycle = [cycle_start_colour]
+            while diffs_dict[cycle[-1]] != cycle_start_colour:
+                c = cycle[-1]
+                cycle.append(diffs_dict[c])
+                del diffs_dict[c]
+            del diffs_dict[cycle[-1]]
+            cycles.append(cycle)
+        # We just pick the longest cycle <= 4, we might have two 2-length cycles but we just
+        # don't try to merge them (which isn't hard really, but so much other stuff is
+        # sub-optimal already)
+        best_cycle = None
+        for cycle in cycles:
+            if len(cycle) <= 4 and (best_cycle is None or len(cycle) > len(best_cycle)):
+                best_cycle = cycle
+        print "best cycle", best_cycle
+        if best_cycle is not None:
+            for palette_group in current_palette:
+                for colour in list(palette_group):
+                    if colour in best_cycle:
+                        i = best_cycle.index(colour)
+                        palette_group.remove(colour)
+                        if i == len(best_cycle)-1:
+                            palette_group.add(best_cycle[0])
+                        else:
+                            palette_group.add(best_cycle[i+1])
 
 if False:
     current_palette = preferred_palette[0]
