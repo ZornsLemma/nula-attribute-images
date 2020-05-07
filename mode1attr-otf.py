@@ -235,7 +235,11 @@ assert ysize == 256
 # TODO: verify it's an indexed colour image with 16 or fewer colours
 pixel_map = image.load()
 
+# TODO: I suspect with a really smart algorithm we should start from the bottom row and work
+# up, but while I'm starting to explore this let's not complicate things.
+
 preferred_palette = [None]*ysize
+hist_by_y = [None]*256
 for y in range(0, ysize):
     hist = defaultdict(int)
     for x in range(0, xsize, 3):
@@ -248,17 +252,36 @@ for y in range(0, ysize):
         do_pair(0, 2)
         do_pair(1, 2)
     hist = sorted(hist.items(), key=lambda x: x[1], reverse=True)
+    hist_by_y[y] = hist
     #print y, hist
-    preferred_palette[y] = palette_from_hist(hist)
+    #preferred_palette[y] = palette_from_hist(hist)
+
+if False:
+    current_palette = preferred_palette[0]
+    for y in range (1, ysize):
+        print "current", current_palette
+        print "preferred", preferred_palette[y]
+        palette_diffs = diff_palettes(current_palette, preferred_palette[y])
+        #print palette_diffs
+        print sum(len(a) for a, b in palette_diffs)
+        current_palette = preferred_palette[y] # SFTODO TOO SIMPLE!
 
 current_palette = preferred_palette[0]
 for y in range (1, ysize):
-    print "current", current_palette
-    print "preferred", preferred_palette[y]
-    palette_diffs = diff_palettes(current_palette, preferred_palette[y])
-    #print palette_diffs
-    print sum(len(a) for a, b in palette_diffs)
-    current_palette = preferred_palette[y] # SFTODO TOO SIMPLE!
+    new_palette = current_palette[:]
+    changes = 0
+    palette_lock = set()
+    for hist_entry in hist_by_y[y]:
+        colour_set = hist_entry[0]
+        assert len(colour_set) == 2
+        if any(colour_set.issubset(palette_group) for palette_group in palette):
+            # This colour pair is already handled perfectly by the palette.
+            palette_lock.update(colour_set)
+        else:
+            if len(colour_set - palette_lock) == 2:
+
+
+
 
 
 
