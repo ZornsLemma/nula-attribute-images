@@ -1,5 +1,4 @@
 REM Code based on tricky's game.asm, but rather hacked about
-HIMEM=&2700
 IntCA1=2
 SysIntVSync=IntCA1
 SystemVIA=&FE40
@@ -76,23 +75,14 @@ IF nulaotf% THEN y0x=237 ELSE y0x=238
         \ A total of 64 cycles
 
         \ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
-        lda #0:sta&82
         lda pal+&000,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom1
         lda pal+&100,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom2
         lda pal+&200,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom3
         lda pal+&300,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom4
         lda pal+&400,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom5
         lda pal+&500,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom6
         lda pal+&600,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom7
         lda pal+&700,y:sta updatepal \ 8 cycles
-        and #&F0:cmp #&00:beq boom8
         \ A total of 64 cycles, same as tricky's ULA palette code
 
         \ Following code up to and including foo takes
@@ -112,23 +102,6 @@ IF nulaotf% THEN y0x=237 ELSE y0x=238
         \beq foo2
         jmp loop
 .foo2
-.boom1
-        inc &82
-.boom2
-        inc &82
-.boom3
-        inc &82
-.boom4
-        inc &82
-.boom5
-        inc &82
-.boom6
-        inc &82
-.boom7
-        inc &82
-.boom8
-        inc &82
-        sty &81
         rts
 
 ]
@@ -137,6 +110,7 @@ NEXT
 *TV255,1
 MODE 1
 VDU 23;8202;0;0;0;
+HIMEM=&2700
 ?&FE22=&61
 FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
