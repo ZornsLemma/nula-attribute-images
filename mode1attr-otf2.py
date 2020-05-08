@@ -458,10 +458,15 @@ for y in range(1, ysize):
     line_changes = bytearray()
     for bbc_colour, (previous_original_colour, new_original_colour) in enumerate(zip(previous_bbc_to_original_colour_map, bbc_to_original_colour_map)):
         if previous_original_colour != new_original_colour:
+            if y == 110:
+                print "EZ", bbc_colour, previous_original_colour, new_original_colour
             line_changes += chr((bbc_colour<<4) | (new_original_colour ^ 7))
     #print y, len(line_changes)
     assert len(line_changes) <= 6
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
+    if y == 110:
+        print "LC", line_changes
+        #assert False
     if False:
         # HACK FOR DEBUGGING (IN COMBINATION WITH PROCstripes)
         if y<=10:
@@ -473,7 +478,7 @@ for y in range(1, ysize):
     # we must provide some safe no-op data. If we have no changes at all we copy the
     # previous line's changes, otherwise we just redo the last change several times.
     if len(line_changes) == 0:
-        line_changes = ula_palette[-changes_per_line:]
+        line_changes = ula_palette_changes[-changes_per_line:]
     else:
         while len(line_changes) < changes_per_line:
             line_changes += chr(line_changes[-1])
@@ -504,7 +509,10 @@ for y_block in range(0, ysize, 8):
     print "Y:", y_block
     for x in range(0, xsize, 3):
         for y in range(y_block, y_block+8):
-            pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
+            if False and y_block == 13*8 and (x >= 153 and x <= 155):
+                pixels = (15, 15, 15)
+            else:
+                pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
             palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette_by_y[y])
             pixel_map[x,y] = adjusted_pixels[0]
             pixel_map[x+1,y] = adjusted_pixels[1]
@@ -514,6 +522,13 @@ for y_block in range(0, ysize, 8):
             bbc_colour_range = set(range(palette_index*4, (palette_index+1)*4))
             for original_colour in adjusted_pixels:
                 bbc_pixels.append(tuple(bbc_colour_range.intersection(original_to_bbc_colour_map[original_colour]))[0] % 4)
+            if y_block == 13*8 and (x >= 153 and x <= 155) and y==y_block+6:
+                print "pal", palette_by_y[y]
+                print "pixels", pixels
+                print "palidx", palette_index
+                print "adjpix", adjusted_pixels                
+                print "bbcpix", bbc_pixels
+                #assert False
 
             #assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
             #assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4

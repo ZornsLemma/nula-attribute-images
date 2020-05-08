@@ -98,6 +98,7 @@ IF nulaotf% THEN y0x=237 ELSE y0x=238
         \ So if branch is taken, we have burned 64+59+5=128 cycles
 
 \ HACK
+        inc &521E
         \dec &80
         \beq foo2
         jmp loop
