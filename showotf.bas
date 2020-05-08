@@ -1,4 +1,5 @@
 REM Code based on tricky's game.asm, but rather hacked about
+HIMEM=&2700
 IntCA1=2
 SysIntVSync=IntCA1
 SystemVIA=&FE40
@@ -47,10 +48,10 @@ IF nulaotf% THEN [OPT FNinit_ula_pal:] ELSE [OPT FNinit_nula_pal:]
 
 \ Load the initial palette to start the frame
 \ TODO I haven't cycle matched tricky's code here, do I need to? probably...
-\ TODO Also cycle counts probably need tweaking depending on nulaotf
 ]
 IF nulaotf% THEN [OPT FNinit_nula_pal:] ELSE [OPT FNinit_ula_pal:]
-IF nulaotf% THEN y0x=237 ELSE y0x=237
+REM TODO: No obvious reason y0x should differ any more...
+IF nulaotf% THEN y0x=237 ELSE y0x=238
 [OPT opt%
 \ Wait out line Y=0
         ldx #y0x
@@ -75,14 +76,23 @@ IF nulaotf% THEN y0x=237 ELSE y0x=237
         \ A total of 64 cycles
 
         \ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
+        lda #0:sta&82
         lda pal+&000,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom1
         lda pal+&100,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom2
         lda pal+&200,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom3
         lda pal+&300,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom4
         lda pal+&400,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom5
         lda pal+&500,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom6
         lda pal+&600,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom7
         lda pal+&700,y:sta updatepal \ 8 cycles
+        and #&F0:cmp #&00:beq boom8
         \ A total of 64 cycles, same as tricky's ULA palette code
 
         \ Following code up to and including foo takes
@@ -97,12 +107,33 @@ IF nulaotf% THEN y0x=237 ELSE y0x=237
         iny : bne next_line \ 5 cycles if taken assuming no page crossing
         \ So if branch is taken, we have burned 64+59+5=128 cycles
 
+\ HACK
+        \dec &80
+        \beq foo2
         jmp loop
+.foo2
+.boom1
+        inc &82
+.boom2
+        inc &82
+.boom3
+        inc &82
+.boom4
+        inc &82
+.boom5
+        inc &82
+.boom6
+        inc &82
+.boom7
+        inc &82
+.boom8
+        inc &82
+        sty &81
+        rts
 
-.dummy
-        equb &0f
 ]
 NEXT
+?&80=255:REM HACK
 *TV255,1
 MODE 1
 VDU 23;8202;0;0;0;
@@ -111,22 +142,9 @@ FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
 *LOAD JAFFA 27D0
-FOR Y%=0 TO 31
-S%=&3000+Y%*640+30*8
-FOR X%=0 TO 15
-FOR Y2%=0 TO 7
-A%=X% MOD 4
-IF A%=0 THEN ?S%=&0
-IF A%=1 THEN ?S%=8+4+2
-IF A%=2 THEN ?S%=128+64+32
-IF A%=3 THEN ?S%=128+64+32+8+4+2
-B%=X% DIV 4
-?S%=(?S%)+((B% AND 2)*8)+(B% AND 1)
-S%=S%+1
-NEXT
-NEXT
-NEXT
+PROCstripes
 CALL start
+END
 FOR I%=0 TO 15
 J%=I%
 IF I%=3 THEN J%=15
@@ -153,7 +171,9 @@ NEXT
 CALL start
 DEF FNinit_ula_pal
 [OPT opt%
-        ldx #15
+        \ X=16-31 is garbage data, but we'll program with correct data afterwards
+        \ and by doing it this way the timing is the same as FNinit_nula_pal.
+        ldx #31
 .init_ula_palette
         lda init_ula_pal,x
         sta ulapal
@@ -171,3 +191,20 @@ DEF FNinit_nula_pal
         bpl init_col
 ]
 =opt%
+DEF PROCstripes
+FOR Y%=0 TO 31
+S%=&3000+Y%*640+30*8
+FOR X%=0 TO 15
+FOR Y2%=0 TO 7
+A%=X% MOD 4
+IF A%=0 THEN ?S%=&0
+IF A%=1 THEN ?S%=8+4+2
+IF A%=2 THEN ?S%=128+64+32
+IF A%=3 THEN ?S%=128+64+32+8+4+2
+B%=X% DIV 4
+?S%=(?S%)+((B% AND 2)*8)+(B% AND 1)
+S%=S%+1
+NEXT
+NEXT
+NEXT
+ENDPROC

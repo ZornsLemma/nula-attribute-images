@@ -462,6 +462,11 @@ for y in range(1, ysize):
     #print y, len(line_changes)
     assert len(line_changes) <= 6
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
+    # HACK
+    if y<=10:
+        line_changes = bytearray([0x60 | (15^7)])
+    else:
+        line_changes = bytearray([0x60 | ((y % 15) ^ 7)]) # TODO: "SHOULD" BE % 16 BUT LEAVE IT FOR NOW
 
     # We always make all the changes, so if we aren't using the maximum number of changes
     # we must provide some safe no-op data. If we have no changes at all we copy the
@@ -474,6 +479,8 @@ for y in range(1, ysize):
     assert len(line_changes) == changes_per_line
     ula_palette_changes.extend(line_changes)
 assert len(ula_palette_changes) == ysize * changes_per_line
+with open('zrawchange', 'wb') as f:
+    f.write(ula_palette_changes)
 def interleave_changes(raw_changes):
     interleaved_changes = bytearray([0])*changes_per_line*ysize
     for y in range(0, ysize):
