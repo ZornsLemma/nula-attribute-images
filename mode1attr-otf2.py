@@ -462,11 +462,12 @@ for y in range(1, ysize):
     #print y, len(line_changes)
     assert len(line_changes) <= 6
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
-    # HACK
-    if y<=10:
-        line_changes = bytearray([0x60 | (15^7)])
-    else:
-        line_changes = bytearray([0x60 | ((y % 15) ^ 7)]) # TODO: "SHOULD" BE % 16 BUT LEAVE IT FOR NOW
+    if False:
+        # HACK FOR DEBUGGING (IN COMBINATION WITH PROCstripes)
+        if y<=10:
+            line_changes = bytearray([0x60 | (15^7)])
+        else:
+            line_changes = bytearray([0x60 | ((y % 15) ^ 7)]) # TODO: "SHOULD" BE % 16 BUT LEAVE IT FOR NOW
 
     # We always make all the changes, so if we aren't using the maximum number of changes
     # we must provide some safe no-op data. If we have no changes at all we copy the
