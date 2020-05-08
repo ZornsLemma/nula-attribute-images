@@ -263,7 +263,7 @@ hist_all = sorted(hist_all.items(), key=lambda x: x[1], reverse=True)
 #    print colour_set, freq
 
 common_palette = [set() for i in range(0, 4)]
-common_colours = 10
+common_colours = 8
 pending_unpaired_colours = set()
 for colour_set, freq in hist_all:
     palette_union = set.union(*common_palette)
@@ -462,7 +462,7 @@ for y in range(1, ysize):
                 print "EZ", bbc_colour, previous_original_colour, new_original_colour
             line_changes += chr((bbc_colour<<4) | (new_original_colour ^ 7))
     #print y, len(line_changes)
-    assert len(line_changes) <= 6
+    assert len(line_changes) <= 16 - common_colours
     previous_bbc_to_original_colour_map = bbc_to_original_colour_map
     if y == 110:
         print "LC", line_changes
