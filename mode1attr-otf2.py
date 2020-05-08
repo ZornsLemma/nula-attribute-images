@@ -325,8 +325,9 @@ print "PUC", pending_unpaired_colours
 print "Common palette:", common_palette
 #visualise_palette(common_palette, "zpal.png")
 common_palette_union = set.union(*common_palette)
+#SFTODO = raw_input("")
 
-if True:
+if False:
     palette = []
     for i in range(0, 4):
         palette.append(set(range(i*4, (i+1)*4)))
@@ -451,7 +452,7 @@ for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
     ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
 
 changes_per_line = 8 # in file, not "can be done without flicker"
-ula_palette_changes = bytearray([0]*changes_per_line) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
+ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 for y in range(1, ysize):
     bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
@@ -509,6 +510,9 @@ for y_block in range(0, ysize, 8):
     print "Y:", y_block
     for x in range(0, xsize, 3):
         for y in range(y_block, y_block+8):
+            #print "Y2:", y
+            #if y == 2:
+            #    assert False
             if False and y_block == 13*8 and (x >= 153 and x <= 155):
                 pixels = (15, 15, 15)
             else:
@@ -522,13 +526,14 @@ for y_block in range(0, ysize, 8):
             bbc_colour_range = set(range(palette_index*4, (palette_index+1)*4))
             for original_colour in adjusted_pixels:
                 bbc_pixels.append(tuple(bbc_colour_range.intersection(original_to_bbc_colour_map[original_colour]))[0] % 4)
-            if y_block == 13*8 and (x >= 153 and x <= 155) and y==y_block+6:
+            if y <= 1:
                 print "pal", palette_by_y[y]
                 print "pixels", pixels
                 print "palidx", palette_index
                 print "adjpix", adjusted_pixels                
                 print "bbcpix", bbc_pixels
-                #assert False
+                #if y == 1:
+                #    assert False
 
             #assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
             #assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
