@@ -549,7 +549,8 @@ for y_block in range(0, ysize, 8):
 
 
 # Save the attribute-constrained version of the image.
-image.save("z.png")
+simulated_image = image.resize((1280, 1024), resample=PIL.Image.NEAREST)
+simulated_image.save("z.png")
 
 assert len(ula_palette) == 16
 assert len(nula_palette) == 32
