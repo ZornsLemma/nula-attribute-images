@@ -1,0 +1,8 @@
+On each scan line allow any four ULA palette changes to suit that line -
+the next line can use four of the eight changes to back that out and four to put its own changes in.
+
+Maybe evalute a full palette over a rolling window of n(=3? 5? 10? 16??) adjacent lines, the idea being to avoid glaring discrepancies in dithering from one line to another. Use the palette calculated for the centre line for that line and "do our best" to change to it, which will hopefully mostly be possible given the palette was calculated over not that line but also the ones above it (and below it, though that won't help wrt this)
+
+Use a Palette object which remembers the "contributing" colour sets rather than forcing us to crystallise this into actual palette groups too soon - this might help us make better decisions where multiple possibilities exist
+
+Maybe make more of an effort to accurately represent triples with three different colours - I have a gut feeling (nothing more) these may account in part for some jagginess around the edges of objects where distinct colours meet. Depending on how "local" the palette is, we should maybe assign these equal weight (whatever that means) with colour pairs. And/or we could use them to break ties when deciding where to put a pair - we prefer to put the colours in in a way that works for the highest-frequency "colour triple" which isn't currently representable, or something.
