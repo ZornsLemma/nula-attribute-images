@@ -1,4 +1,5 @@
 REM Code based on tricky's game.asm, but rather hacked about
+sm_im=1
 IntCA1=2
 SysIntVSync=IntCA1
 SystemVIA=&FE40
@@ -50,7 +51,7 @@ IF nulaotf% THEN [OPT FNinit_ula_pal:] ELSE [OPT FNinit_nula_pal:]
 ]
 IF nulaotf% THEN [OPT FNinit_nula_pal:] ELSE [OPT FNinit_ula_pal:]
 REM TODO: No obvious reason y0x should differ any more...
-IF nulaotf% THEN y0x=237 ELSE y0x=238
+IF nulaotf% THEN y0x=237 ELSE y0x=234
 [OPT opt%
 \ Wait out line Y=0
         ldx #y0x
@@ -66,36 +67,51 @@ IF nulaotf% THEN y0x=237 ELSE y0x=238
         ldy #1
 .next_line
 
-        \ tricky's code was for ULA palette, so we have to tweak this bit.
-        \ His code with cycle counts (assuming no page crossing)
-        \ 8=4+4 lda cols+&000,y ; sta col0+sm_im
-        \ 8=ditto lda cols+&100,y ; sta col1+sm_im
-        \ 24=2+4+2+4+2+4+2+4 .col0 lda #5 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette ; EOR #&40 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette
-        \ 24=ditto .col1 lda #3 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette ; EOR #&40 ; STA VideoULAPalette ; EOR #&10 ; STA VideoULAPalette
-        \ A total of 64 cycles
+        \ Get ready for the time-critical bit to come.
+        \ 60 cycles in this block
+        lda pal+&000,y:sta update0+sm_im \ 8 cycles
+        lda pal+&100,y:sta update1+sm_im \ 8 cycles
+        lda pal+&200,y:sta update2+sm_im \ 8 cycles
+        lda pal+&300,y:sta update3+sm_im \ 8 cycles
+        lda pal+&400,y:sta update4+sm_im \ 8 cycles
+        lda pal+&500,y:sta update5+sm_im \ 8 cycles
+        lda pal+&600,y:sta update6+sm_im \ 8 cycles
+        ldx pal+&700,y                   \ 4 cycles
 
-        \ TODO See tricky's post in "my" stardot thread, he has some advice which may make 8 possible
-        lda pal+&000,y:sta updatepal \ 8 cycles
-        lda pal+&100,y:sta updatepal \ 8 cycles
-        lda pal+&200,y:sta updatepal \ 8 cycles
-        lda pal+&300,y:sta updatepal \ 8 cycles
-        lda pal+&400,y:sta updatepal \ 8 cycles
-        lda pal+&500,y:sta updatepal \ 8 cycles
-        lda pal+&600,y:sta updatepal \ 8 cycles
-        lda pal+&700,y:sta updatepal \ 8 cycles
-        \ A total of 64 cycles, same as tricky's ULA palette code
+        \ These updates have to occur within the 48 cycles of the horizontal blanking
+        \ interval to avoid twinkling. We have 46 cycles here, and the first two are
+        \ not actually touching hardware so we do all the critical stuff in 44 cycles.
+.update0
+        lda #0:sta updatepal \ 6 cycles
+.update1
+        lda #0:sta updatepal \ 6 cycles
+.update2
+        lda #0:sta updatepal \ 6 cycles
+.update3
+        lda #0:sta updatepal \ 6 cycles
+.update4
+        lda #0:sta updatepal \ 6 cycles
+.update5
+        lda #0:sta updatepal \ 6 cycles
+.update6
+        lda #0:sta updatepal \ 6 cycles
+.update7
+        stx updatepal        \ 4 cycles
 
-        \ Following code up to and including foo takes
-        \ 2+10*(2+3)+1*(2+2)+3=59 cycles
-        ldx #11 \ 2 cycles
-.wait
-        dex \ 2 cycles
-        bne wait \ 2 cycles if not taken, 3 cycles if taken assuming no page crossing
-        beq foo \ 3 cycles
+        \ We need to take 128 cycles per line. We've had 60+46 so far and the
+        \ code at foo below will take 5 cycles, so we need to burn 128-60-46-5=17
+        \ cycles.
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        and &70 \ 3 cycles
 .foo
 
         iny : bne next_line \ 5 cycles if taken assuming no page crossing
-        \ So if branch is taken, we have burned 64+59+5=128 cycles
 
 \ HACK
         \inc &521E
@@ -117,7 +133,7 @@ FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
 *LOAD JAFFA 27D0
-PROCstripes
+REMPROCstripes
 CALL start
 END
 FOR I%=0 TO 15
