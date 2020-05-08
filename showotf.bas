@@ -14,7 +14,8 @@ nulapal=&FE23
 pal=&3000-&800
 init_nula_pal=pal-32
 init_ula_pal=init_nula_pal-16
-updatepal=ulapal:REM sometimes will want ulapal, sometimes nulapal
+nulaotf%=FALSE:REM will vary between images
+IF nulaotf% THEN updatepal=nulapal ELSE updatepal=ulapal
 FOR opt%=0 TO 3 STEP 3
 P%=&900:REM we need to avoid page crossing so don't DIM code space
 [OPT opt%
@@ -31,21 +32,10 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         ldx #CrtcR3SyncPulseWidths         : stx CrtcReg
         lda #&29                           : sta CrtcVal ; because my LCD doesn't sync with &28!
 
-
-        ldx #15
-.init_ula_palette
-        lda init_ula_pal,x
-        sta ulapal
-        dex
-        bpl init_ula_palette
-
-        ldx #31
-.init_col
-        lda init_nula_pal,x
-        sta nulapal
-        dex
-        bpl init_col
-
+]
+REM One-off initialisation of whichever palette isn't changing on the fly
+IF nulaotf% THEN [OPT FNinit_ula_pal:] ELSE [OPT FNinit_nula_pal:]
+[OPT opt%
 .loop
 
 \ Wait for VSYNC
@@ -55,17 +45,15 @@ P%=&900:REM we need to avoid page crossing so don't DIM code space
         bit SysViaIFR
         beq wait_vsync
 
-\ Load the initial palette
+\ Load the initial palette to start the frame
 \ TODO I haven't cycle matched tricky's code here, do I need to? probably...
-        ldx #31
-.init_col
-        lda init_nula_pal,x
-        sta nulapal
-        dex
-        bpl init_col
-
+\ TODO Also cycle counts probably need tweaking depending on nulaotf
+]
+IF nulaotf% THEN [OPT FNinit_nula_pal:] ELSE [OPT FNinit_ula_pal:]
+IF nulaotf% THEN y0x=237 ELSE y0x=237
+[OPT opt%
 \ Wait out line Y=0
-        ldx #237
+        ldx #y0x
 .waitt
         pha : pla : pha : pla
         dex
@@ -163,3 +151,23 @@ FOR I%=&3000 TO &7FFC STEP 4
 !I%=&EEEEEEEE
 NEXT
 CALL start
+DEF FNinit_ula_pal
+[OPT opt%
+        ldx #15
+.init_ula_palette
+        lda init_ula_pal,x
+        sta ulapal
+        dex
+        bpl init_ula_palette
+]
+=opt%
+DEF FNinit_nula_pal
+[OPT opt%
+        ldx #31
+.init_col
+        lda init_nula_pal,x
+        sta nulapal
+        dex
+        bpl init_col
+]
+=opt%

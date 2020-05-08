@@ -326,6 +326,13 @@ print "Common palette:", common_palette
 #visualise_palette(common_palette, "zpal.png")
 common_palette_union = set.union(*common_palette)
 
+if True:
+    palette = []
+    for i in range(0, 4):
+        palette.append(set(range(i*4, (i+1)*4)))
+    visualise_palette(palette, "zpal.png")
+    palette = None
+
 # TODO: Code very similar to previous common_palette build up, but let's just write it
 # out again for the moment to ease tinkering
 # Build up per-line palettes based on the common palette. Note that because the remaining
@@ -467,6 +474,13 @@ for y in range(1, ysize):
     assert len(line_changes) == changes_per_line
     ula_palette_changes.extend(line_changes)
 assert len(ula_palette_changes) == ysize * changes_per_line
+def interleave_changes(raw_changes):
+    interleaved_changes = bytearray([0])*changes_per_line*ysize
+    for y in range(0, ysize):
+        for i in range(0, changes_per_line):
+            interleaved_changes[y+i*256] = raw_changes[y*changes_per_line+i]
+    return interleaved_changes
+ula_palette_changes = interleave_changes(ula_palette_changes)
 
 
 # Write the image data out with appropriate bit-swizzling. We also make the
