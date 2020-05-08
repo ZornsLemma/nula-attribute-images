@@ -1,4 +1,5 @@
 REM Code based on tricky's game.asm, but rather hacked about
+pause%=500:REM centiseconds
 sm_im=1
 IntCA1=2
 SysIntVSync=IntCA1
@@ -17,7 +18,7 @@ init_nula_pal=pal-32
 init_ula_pal=init_nula_pal-16
 nulaotf%=FALSE:REM will vary between images
 IF nulaotf% THEN updatepal=nulapal ELSE updatepal=ulapal
-FOR opt%=0 TO 3 STEP 3
+FOR opt%=0 TO 2 STEP 2
 P%=&900:REM we need to avoid page crossing so don't DIM code space
 [OPT opt%
 .start
@@ -112,29 +113,34 @@ IF nulaotf% THEN y0x=237 ELSE y0x=234
 .foo
 
         iny : bne next_line \ 5 cycles if taken assuming no page crossing
-
-\ HACK
-        \inc &521E
-        \dec &80
-        \beq foo2
+        inc &80:beq maybe
         jmp loop
-.foo2
+.maybe
+        inc &81:beq done
+        jmp loop
+.done
         rts
 
 ]
 NEXT
-?&80=255:REM HACK
 *TV255,1
 MODE 1
 VDU 23;8202;0;0;0;
+*FX229,1
 HIMEM=&2700
 ?&FE22=&61
 FOR I%=0 TO 15
 init_ula_pal?I%=(I%*16)+(I% EOR 7)
 NEXT
-*LOAD JAFFA 27D0
+REPEAT
+CLS
+READ F$
+IF F$="XXX" THEN RESTORE:READ F$
+OSCLI "LOAD "+F$+ " 27D0"
 REMPROCstripes
+!&80=&10000-(pause%/2)
 CALL start
+UNTIL FALSE
 END
 FOR I%=0 TO 15
 J%=I%
@@ -199,3 +205,12 @@ NEXT
 NEXT
 NEXT
 ENDPROC
+DATA JAFFA
+DATA PARROT
+DATA CAR
+DATA PIZZA
+DATA TOWER
+DATA BEACH
+DATA ROCKS
+DATA DESERT
+DATA XXX
