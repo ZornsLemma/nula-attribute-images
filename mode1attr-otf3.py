@@ -316,7 +316,7 @@ class Palette:
                 if old_colour in new_palette_group_set or (
                         len(new_palette_group_set) < 4 and old_colour in pending_colours):
                     new_palette_group_list.append(old_colour)
-                    pending_colours.remove(old_colour)
+                    pending_colours.discard(old_colour)
                 else:
                     if len(new_palette_group_set) > 0:
                         new_palette_group_list.append(min(new_palette_group_set))
@@ -443,14 +443,14 @@ class Palette:
             # The colour set can't be added as a unit, so divide its frequency count among
             # its components (colour triples decay to colour pairs, colour pairs decay to
             # single colours) and carry on.
-            new_hist = defaultdict(set)
+            new_hist = defaultdict(int)
             for colour_set, freq in self.hist:
                 new_hist[colour_set] += freq
             t = tuple(colour_set)
             f = freq / float(len(colour_set))
             for i in range(0, len(colour_set)):
                 for j in range(i+1, len(colour_set)):
-                    new_hist[frozenset(t[i], t[j])] += f
+                    new_hist[frozenset([t[i], t[j]])] += f
             self.hist = sorted(new_hist.items(), key=lambda x: x[1], reverse=True)
 
 
@@ -513,6 +513,7 @@ for y in range(0, ysize):
 
 
 for y in range(0, ysize):
+    print "Y", y
     palette_actions = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
 
 
