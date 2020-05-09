@@ -310,31 +310,58 @@ class Palette:
                     # in order to avoid "stealing" a new_palette group early on when we have
                     # empty groups as well as non-empty ones; we need to make the empty groups
                     # preferable when there is nothing in common.
-                    score = len(old_palette_group.intersection(new_palette_group))*10 - len(new_palette_group)
+                    score = len(old_palette_group.intersection(new_palette_group))*10 + len(new_palette_group)
                     if best_new_palette_group is None or score > best_new_palette_group_score:
                         best_new_palette_group = new_palette_group
                         best_new_palette_group_score = score
                 new_palette.append(best_new_palette_group)
                 original_new_palette.remove(best_new_palette_group)
-        else:
+        elif False:
             old_palette_indices = set(range(0, len(old_palette)))
             new_palette_group_reordered = [None] * 4
             for new_palette_group in new_palette:
+                print "PC", new_palette_group
                 best_old_palette_group_index = None
                 for i in old_palette_indices:
                     old_palette_group = old_palette[i]
-                    # We apply a small positive score for the length of new_palette_group
+                    # We apply a small negative score for the length of new_palette_group
                     # in order to avoid "stealing" a new_palette group early on when we have
                     # empty groups as well as non-empty ones; we need to make the empty groups
                     # preferable when there is nothing in common.
-                    SFTODO THIS IS WRONG WE ARE STILL ORDER DEPENDENT
-                    score = len(set(old_palette_group).intersection(new_palette_group))*10 + len(new_palette_group)
+                    score = len(set(old_palette_group).intersection(new_palette_group))*10 - len(old_palette_group)
+                    print "PQ", i, score
                     if best_old_palette_group_index is None or score > best_old_palette_group_score:
                         best_old_palette_group_index = i
                         best_old_palette_group_score = score
                 new_palette_group_reordered[best_old_palette_group_index] = new_palette_group
                 old_palette_indices.remove(best_old_palette_group_index)
+                print "PD", new_palette_group, old_palette_indices
             new_palette = new_palette_group_reordered
+        elif False:
+            similarity = [[0]*4]*4
+            for old_palette_group_index, old_palette_group in enumerate(old_palette):
+                for new_palette_group_index, new_palette_group in enumerate(new_palette):
+                    similarity[new_palette_group_index][old_palette_group_index] = len(set(old_palette_group) - new_palette_group)
+            new_palette_group_reordered = [None] * 4
+            for new_palette_group_index, new_palette_group in enumerate(new_palette):
+                old_palette_group_index = similarity[new_palette_group_index].index(max(similarity[new_palette_group_index]))
+                new_palette_group_reordered[new_palette_group_index] = new_palette_group
+                similarity[new_palette_group_index] = [-1, -1, -1, -1]
+            new_palette = new_palette_group_reordered
+        else:
+            new_palette_reordered = [None] * 4
+            old_palette_copy = old_palette[:]
+            for new_palette_group in sorted(new_palette, key=lambda x: len(x), reverse=True):
+                best_old_palette_group = None
+                for old_palette_group_index, old_palette_group in enumerate(old_palette_copy):
+                    if old_palette_group is not None and (best_old_palette_group is None or old_palette_group is not None and len(set(old_palette_group).intersection(new_palette_group)) > len(set(best_old_palette_group).intersection(new_palette_group))):
+                        best_old_palette_group = old_palette_group
+                        best_old_palette_group_index = old_palette_group_index
+                new_palette_reordered[best_old_palette_group_index] = new_palette_group
+                old_palette_copy[best_old_palette_group_index] = None
+            new_palette = new_palette_reordered
+
+
 
 
 
