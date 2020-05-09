@@ -299,22 +299,44 @@ class Palette:
         # to minimise the pairwise differences.
         print "FA0", old_palette
         print "FA1", new_palette
-        old_palette_set = [set(palette_group) for palette_group in old_palette]
-        original_new_palette = new_palette
-        new_palette = []
-        for old_palette_group in old_palette_set:
-            best_new_palette_group = None
-            for new_palette_group in original_new_palette:
-                # We apply a small negative score for the length of new_palette_group
-                # in order to avoid "stealing" a new_palette group early on when we have
-                # empty groups as well as non-empty ones; we need to make the empty groups
-                # preferable when there is nothing in common.
-                score = len(old_palette_group.intersection(new_palette_group))*10 - len(new_palette_group)
-                if best_new_palette_group is None or score > best_new_palette_group_score:
-                    best_new_palette_group = new_palette_group
-                    best_new_palette_group_score = score
-            new_palette.append(best_new_palette_group)
-            original_new_palette.remove(best_new_palette_group)
+        if False:
+            old_palette_set = [set(palette_group) for palette_group in old_palette]
+            original_new_palette = new_palette
+            new_palette = []
+            for old_palette_group in old_palette_set:
+                best_new_palette_group = None
+                for new_palette_group in original_new_palette:
+                    # We apply a small negative score for the length of new_palette_group
+                    # in order to avoid "stealing" a new_palette group early on when we have
+                    # empty groups as well as non-empty ones; we need to make the empty groups
+                    # preferable when there is nothing in common.
+                    score = len(old_palette_group.intersection(new_palette_group))*10 - len(new_palette_group)
+                    if best_new_palette_group is None or score > best_new_palette_group_score:
+                        best_new_palette_group = new_palette_group
+                        best_new_palette_group_score = score
+                new_palette.append(best_new_palette_group)
+                original_new_palette.remove(best_new_palette_group)
+        else:
+            old_palette_indices = set(range(0, len(old_palette)))
+            new_palette_group_reordered = [None] * 4
+            for new_palette_group in new_palette:
+                best_old_palette_group_index = None
+                for i in old_palette_indices:
+                    old_palette_group = old_palette[i]
+                    # We apply a small negative score for the length of new_palette_group
+                    # in order to avoid "stealing" a new_palette group early on when we have
+                    # empty groups as well as non-empty ones; we need to make the empty groups
+                    # preferable when there is nothing in common.
+                    score = len(set(old_palette_group).intersection(new_palette_group))*10 - len(new_palette_group)
+                    if best_old_palette_group_index is None or score > best_old_palette_group_score:
+                        best_old_palette_group_index = i
+                        best_old_palette_group_score = score
+                new_palette_group_reordered[best_old_palette_group_index] = new_palette_group
+                old_palette_indices.remove(best_old_palette_group_index)
+            new_palette = new_palette_group_reordered
+
+
+
         print "FA2", new_palette
 
         # Assign an index to the elements of the palette groups in the new palette,
