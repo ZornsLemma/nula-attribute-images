@@ -297,21 +297,30 @@ class Palette:
         # The order of the rows in the palettes is arbitrary (we can just adjust the
         # attribute values on the pixel data as we encode it), so reorder new_palette
         # to minimise the pairwise differences.
+        print "FA0", old_palette
+        print "FA1", new_palette
         old_palette_set = [set(palette_group) for palette_group in old_palette]
         original_new_palette = new_palette
         new_palette = []
         for old_palette_group in old_palette_set:
             best_new_palette_group = None
             for new_palette_group in original_new_palette:
-                if best_new_palette_group is None or len(old_palette_group.intersection(new_palette_group)) > len(old_palette_group.intersection(best_new_palette_group)):
+                # We apply a small negative score for the length of new_palette_group
+                # in order to avoid "stealing" a new_palette group early on when we have
+                # empty groups as well as non-empty ones; we need to make the empty groups
+                # preferable when there is nothing in common.
+                score = len(old_palette_group.intersection(new_palette_group))*10 - len(new_palette_group)
+                if best_new_palette_group is None or score > best_new_palette_group_score:
                     best_new_palette_group = new_palette_group
+                    best_new_palette_group_score = score
             new_palette.append(best_new_palette_group)
             original_new_palette.remove(best_new_palette_group)
+        print "FA2", new_palette
 
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
-        #print "AOLD", old_palette
-        #print "ANEW", new_palette
+        print "AOLD", old_palette
+        print "ANEW", new_palette
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = []
@@ -332,7 +341,7 @@ class Palette:
             new_palette_list.append(new_palette_group_list)
         new_palette = new_palette_list
         new_palette_list = None
-        #print "BNEW", new_palette
+        print "BNEW", new_palette
 
         # Any remaining pending_colours need to be put into new_palette We
         # prefer putting them in emptier palette groups; this is perhaps a bit
@@ -415,20 +424,22 @@ class Palette:
             #print "CCC"
             # Try to add a colour set to a single palette group within a palette.
             best_palette_group = None
-            for palette_group in new_palette:
+            for palette_group_index, palette_group in enumerate(new_palette):
                 #print "D", palette_group
                 if len(colour_set.union(palette_group)) > 4:
                     continue
 
-                pgi = new_palette.index(palette_group)
                 new_palette_copy = copy.deepcopy(new_palette)
-                new_palette_copy[pgi].update(colour_set)
+                new_palette_copy[palette_group_index].update(colour_set)
                 if Palette.entries_used(new_palette_copy, pending_colours) > 16:
                     continue
                 #print "EEE", new_palette_copy
 
-                assert len(new_palette_copy[pgi]) <= 4
+                assert len(new_palette_copy[palette_group_index]) <= 4
+                print "E1", old_palette
+                print "E2", new_palette_copy, pending_colours
                 _, changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
+                print "E3", len(changes), changes
                 #print "FFF", changes
                 changes = len(changes)
 
