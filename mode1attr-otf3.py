@@ -279,10 +279,10 @@ class Palette:
         # go through.
         while len(self.hist) > 0:
             colour_set, freq = self.hist.pop(0)
-
-            assert len(Palette.diff(old_palette, new_palette)) <= max_changes
-
             pending_colours -= set.union(*new_palette)
+
+            assert len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes
+
 
             new_palette_entries_used = entries_used(new_palette, pending_colours) 
             if new_palette_entries_used == 16:
@@ -290,7 +290,8 @@ class Palette:
                 # examining further histogram entries.
                 break
 
-            if any(colour_set.issubset(palette_group) for palette_group in new_palette):
+            if (any(colour_set.issubset(palette_group) for palette_group in new_palette) or
+                    (len(colour_set) == 1 and colour_set in pending_colours):
                 # Nothing to do, we can represent this perfectly
                 continue
 
@@ -301,6 +302,8 @@ class Palette:
                 # Single colours must go in somewhere, but we don't care where, so
                 # don't rush to place them.
                 pending_colours.add(elem(colour_set))
+                if len(Palette.diff(old_palette, new_palette, pending_colours)) > max_changes:
+                    pending_colours.remove(elem(colour_set))
                 continue
 
             # TODO: In the following cases (for both len 2 and 3) where we might have a choice
@@ -309,27 +312,26 @@ class Palette:
             # add to. This might be *as well as* considering adding as few new colours to new_palette
             # as possible or *instead of*.
 
-            def try_add_colour_set_to_palette_group(palette):
-                # Try to add a colour set to a single palette group within a palette. If
-                # we have a choice we prefer adding as few new colours as possible.
-                # TODO: we should perhaps be factoring in the change in
-                # len(Palette.diff(old_palette, new_palette)) when deciding which palette
-                # group to add to. This might be *as well as* considering adding as few
-                # new colours to new_palette as possible or *instead of*.
-                best_palette_group = None
-                for palette_group in palette:
-                    if len(colour_set.union(palette_group)) <= 4 and (
-                            best_palette_group is None or 
-                            len(colour_set - palette_group) < len(colour_set - best_palette_group)):
-                        best_palette_group = palette_group
-                if best_palette_group is not None:
-                    if entries_used(palette) + len(colour_set - best_palette_group) <= 16:
-                        best_palette_group.update(colour_set)
-                        return True
-                return False
+            # Try to add a colour set to a single palette group within a palette. If
+            # we have a choice we prefer adding as few new colours as possible.
+            # TODO: we should perhaps be factoring in the change in
+            # len(Palette.diff(old_palette, new_palette)) when deciding which palette
+            # group to add to. This might be *as well as* considering adding as few
+            # new colours to new_palette as possible or *instead of*.
+            best_palette_group = None
+            for palette_group in new_palette:
+                if len(colour_set.union(palette_group)) <= 4 and (
+                        best_palette_group is None or 
+                        len(colour_set - palette_group) < len(colour_set - best_palette_group)):
+                    best_palette_group = palette_group
+            if best_palette_group is not None:
+                if entries_used(new_palette, pending_colours) + len(colour_set - best_palette_group) <= 16:
+                    saved_new_palette = copy.deepcopy(new_palette)
+                    best_palette_group.update(colour_set)
+                    if len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes:
+                        continue
+                    new_palette = saved_new_palette
 
-            if try_add_colour_set_to_palette_group(new_palette):
-                continue
             # The colour set can't be added as a unit, so divide its frequency count among
             # its components (colour triples decay to colour pairs, colour pairs decay to
             # single colours) and carry on.
