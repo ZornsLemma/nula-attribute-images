@@ -102,6 +102,13 @@ IF nulaotf% THEN y0x=237 ELSE y0x=234
         \ We need to take 128 cycles per line. We've had 60+46 so far and the
         \ code at foo below will take 5 cycles, so we need to burn 128-60-46-5=17
         \ cycles.
+	\ TODO; We could use Y - we almost certainly have time to save and restore
+	\ it instead of some of these nops - to hold one of the palette updates.
+	\ That would allow us to save 2 cycles during the palette updates, bringing
+	\ it down to 42 cycles. If it's possible to use the advanced "stable raster"
+	\ techniques to avoid the cycle stretching uncertainty, that would give us
+	\ an extra 6 cycles in the 48 cycle HBI so we could maybe do *9* updates
+	\ per line.
         nop     \ 2 cycles
         nop     \ 2 cycles
         nop     \ 2 cycles
