@@ -370,7 +370,7 @@ class Palette:
                 break
 
             if (any(colour_set.issubset(palette_group) for palette_group in new_palette) or
-                    (len(colour_set) == 1 and colour_set in pending_colours):
+                    (len(colour_set) == 1 and colour_set in pending_colours)):
                 # Nothing to do, we can represent this perfectly
                 continue
 
@@ -421,10 +421,6 @@ class Palette:
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
                     best_palette_group = palette_group
                     best_palette_group_score = palette_group_score
-
-                    best_palette_group is None or 
-                    len(colour_set - palette_group) < len(colour_set - best_palette_group)):
-                best_palette_group = palette_group
 
             if best_palette_group is not None:
                 saved_new_palette = copy.deepcopy(new_palette)
@@ -501,7 +497,7 @@ for y in range(0, ysize):
     # suddenly new colours will appear and cause horizontal striping; if this seems to
     # happen we could always constrain the window to be the bottom window_size lines
     # if it would otherwise be smaller.
-    window_hist = merge_hist(raw_hist_by_y[y:y+palette_scan_line_window_size])
+    window_hist = merge_hist(raw_hist_by_y[y:y+window_size])
     palette_by_y[y] = Palette(window_hist)
 
 
