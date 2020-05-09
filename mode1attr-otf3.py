@@ -257,8 +257,92 @@ class Palette:
     # to cost
 
     @classmethod
-    def diff(old_palette, new_palette):
-        assert False
+    def entries_used(palette, pending_colours):
+        return (sum(len(palette_group) for palette_group in palette) +
+                len(pending_colours - set.union(*palette)))
+
+
+    @classmethod
+    def valid_palette(palette, pending_colours):
+        assert len(palette) == 4
+        assert max(len(palette_group) in palette) == 4
+        palette_union = set.union(set(palette_group) for palette_group in palette)
+        assert all(isinstance(x, int) for x in palette_union)
+        assert min(palette_union) >= 0
+        assert max(palette_union) <= 15
+        assert entries_used(palette, pending_colours) <= 16
+        assert all(len(set(palette_group)) == len(palette_group) for palette_group in palette)
+        return True
+
+    @classmethod
+    def diff(old_palette, new_palette, pending_colours):
+        assert Palette.valid_palette(old_palette, set())
+        assert Palette.valid_palette(new_palette, pending_colours)
+        assert all(isinstance(palette_group, list) for palette_group in old_palette)
+        assert all(isinstance(palette_group, set) for palette_group in new_palette)
+        # We must not mutate our arguments, as we're frequently called "speculatively"
+        # TODO: Play it safe for now while experimenting, it may be we don't actually
+        # try to mutate some of these and we can therefore avoid the copy.
+        old_palette = copy.deepcopy(old_palette)
+        new_palette = copy.deepcopy(new_palette)
+        pending_colours = pending_colours - set.union(*new_palette)
+
+        # The order of the rows in the palettes is arbitrary (we can just adjust the
+        # attribute values on the pixel data as we encode it), so reorder new_palette
+        # to minimise the pairwise differences.
+        old_palette_set = [set(palette_group) for palette_group in old_palette]
+        original_new_palette = new_palette
+        new_palette = []
+        for old_palette_group in old_palette_set:
+            best_new_palette_group = None
+            for new_palette_group in original_new_palette:
+                if best_new_palette_group is None or len(old_palette_group.intersection(new_palette_group)) > len(old_palette_group.intersection(best_new_palette_group)):
+                    best_new_palette_group = new_palette_group
+            new_palette.append(best_new_palette_group)
+            original_new_palette.remove(best_new_palette_group)
+
+        # Assign an order to the elements of the palette groups in the new palette,
+        # re-using the order from the old palette where possible.
+        new_palette_list = []
+        for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
+            new_palette_group_list = []
+            for i, old_colour in enumerate(old_palette_group):
+                if old_colour in new_palette_group_set or (
+                        len(new_palette_group_set) < 4 and old_colour in pending_colours):
+                    new_palette_group_list.append(old_colour)
+                    pending_colours.remove(old_colour)
+                else:
+                    if len(new_palette_group_set) > 0:
+                        new_palette_group_list.append(min(new_palette_group_set))
+                        new_palette_group_set.remove(min(new_palette_group_set))
+                    else:
+                        new_palette_group_list.append(None)
+            new_palette_list.append(new_palette_group_list)
+
+        # Any remaining pending_colours need to be put into new_palette_list. We
+        # prefer putting them in emptier palette groups; this is perhaps a bit
+        # arbitrary.
+        while len(pending_colours) > 0:
+            best_palette_group = None
+            for palette_group in new_palette_list:
+                if None in palette_group and (best_palette_group is None or palette_group.count(None) > best_palette_group.count(None)):
+                    palette_group[palette_group.index(None)] = min(pending_colours)
+                    pending_colours.remove(min(pending_colours))
+
+        # If there are any leftover entries in new_palette_list, copy the corresponding
+        # colours over from old_palette.
+        for old_palette_group, new_palette_group in zip(old_palette, new_palette):
+            for i in range(0, new_palette_group):
+                if new_palette_group[i] is None:
+                    new_palette_group[i] = old_palette_group[i]
+
+        changes = []
+        for i, (old_palette_group, new_palette_group) in enumerate(zip(old_palette, new_palette)):
+            for j, (old_colour, new_colour) in enumerate(zip(old_palette_group, new_palette_group)):
+                if old_colour != new_colour:
+                    changes.append(i*4+j, new_colour)
+
+        return changes
 
     def crystallise(self, current_palette):
         assert current_palette is None or current_palette.crystallised
@@ -270,10 +354,6 @@ class Palette:
         old_palette = current_palette.crystallised_palette
         new_palette = [set()*4]
         pending_colours = set()
-
-        def entries_used(palette, pending_colours):
-            return (sum(len(palette_group) for palette_group in palette) +
-                    len(pending_colours - set.union(*palette)))
 
         # We iterate over the histogram using while/pop because we want to modify it as we
         # go through.
