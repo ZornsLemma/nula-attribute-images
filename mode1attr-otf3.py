@@ -402,7 +402,7 @@ class Palette:
             # Try to add a colour set to a single palette group within a palette.
             best_palette_group = None
             for palette_group in new_palette:
-                print "D", palette_group
+                #print "D", palette_group
                 if len(colour_set.union(palette_group)) > 4:
                     continue
 
@@ -414,7 +414,7 @@ class Palette:
                 #print "EEE", new_palette_copy
 
                 assert len(new_palette_copy[pgi]) <= 4
-                changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
+                changes = len(Palette.diff(old_palette, new_palette_copy, pending_colours))
                 #print "FFF", changes
 
                 if changes > max_changes:
