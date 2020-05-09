@@ -282,6 +282,7 @@ class Palette:
 
     @staticmethod
     def diff(old_palette, new_palette, pending_colours):
+        #print "D", old_palette, new_palette, pending_colours
         assert Palette.valid_palette(old_palette, set())
         assert Palette.valid_palette(new_palette, pending_colours)
         assert all(isinstance(palette_group, list) for palette_group in old_palette)
@@ -363,14 +364,16 @@ class Palette:
             max_changes = 8
 
         old_palette = current_palette.crystallised_palette
-        new_palette = [set()] * 4
+        new_palette = [set() for i in range(0, 4)]
         pending_colours = set()
 
         # We iterate over the histogram using while/pop because we want to modify it as we
         # go through.
         while len(self.hist) > 0:
             colour_set, freq = self.hist.pop(0)
+            print "H", colour_set, freq, len(self.hist)
             pending_colours -= set.union(*new_palette)
+            print "P", new_palette, pending_colours
 
             assert len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes
 
@@ -380,11 +383,13 @@ class Palette:
                 # examining further histogram entries.
                 break
 
+            #print "AAA"
             if (any(colour_set.issubset(palette_group) for palette_group in new_palette) or
                     (len(colour_set) == 1 and colour_set in pending_colours)):
                 # Nothing to do, we can represent this perfectly
                 continue
 
+            #print "BBB"
             if len(colour_set) == 1:
                 # Single colours must go in somewhere, but we don't care where, so
                 # don't rush to place them.
@@ -393,9 +398,11 @@ class Palette:
                     pending_colours.remove(elem(colour_set))
                 continue
 
+            #print "CCC"
             # Try to add a colour set to a single palette group within a palette.
             best_palette_group = None
             for palette_group in new_palette:
+                print "D", palette_group
                 if len(colour_set.union(palette_group)) > 4:
                     continue
 
@@ -404,9 +411,11 @@ class Palette:
                 new_palette_copy[pgi].update(colour_set)
                 if Palette.entries_used(new_palette_copy, pending_colours) > 16:
                     continue
+                #print "EEE", new_palette_copy
 
                 assert len(new_palette_copy[pgi]) <= 4
                 changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
+                #print "FFF", changes
 
                 if changes > max_changes:
                     continue
@@ -439,6 +448,7 @@ class Palette:
                 if len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes:
                     continue
                 new_palette = saved_new_palette
+                continue
 
             # The colour set can't be added as a unit, so divide its frequency count among
             # its components (colour triples decay to colour pairs, colour pairs decay to
