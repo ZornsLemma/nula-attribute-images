@@ -252,29 +252,35 @@ class Palette:
         self.hist = hist[:]
         self.crystallised = False
 
+    @staticmethod
+    def default_palette():
+        p = Palette([])
+        p.crystallised_palette = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+        p.crystallised = True
+        return p
+
     # TODO: I think a crystallised palette may want to use lists not sets inside 'palette'
     # because the actual precise index is important when deciding how much a change is going
     # to cost
 
-    @classmethod
+    @staticmethod
     def entries_used(palette, pending_colours):
         return (sum(len(palette_group) for palette_group in palette) +
-                len(pending_colours - set.union(*palette)))
+                len(pending_colours - set.union(*(set(palette_group) for palette_group in palette))))
 
 
-    @classmethod
+    @staticmethod
     def valid_palette(palette, pending_colours):
         assert len(palette) == 4
-        assert max(len(palette_group) in palette) == 4
-        palette_union = set.union(set(palette_group) for palette_group in palette)
+        assert max(len(palette_group) for palette_group in palette) <= 4
+        palette_union = set.union(*(set(palette_group) for palette_group in palette))
         assert all(isinstance(x, int) for x in palette_union)
-        assert min(palette_union) >= 0
-        assert max(palette_union) <= 15
-        assert entries_used(palette, pending_colours) <= 16
+        assert all(0 <= colour <= 15 for colour in palette_union)
+        assert Palette.entries_used(palette, pending_colours) <= 16
         assert all(len(set(palette_group)) == len(palette_group) for palette_group in palette)
         return True
 
-    @classmethod
+    @staticmethod
     def diff(old_palette, new_palette, pending_colours):
         assert Palette.valid_palette(old_palette, set())
         assert Palette.valid_palette(new_palette, pending_colours)
@@ -332,7 +338,7 @@ class Palette:
         # If there are any leftover entries in new_palette_list, copy the corresponding
         # colours over from old_palette.
         for old_palette_group, new_palette_group in zip(old_palette, new_palette):
-            for i in range(0, new_palette_group):
+            for i in range(0, len(new_palette_group)):
                 if new_palette_group[i] is None:
                     new_palette_group[i] = old_palette_group[i]
 
@@ -348,11 +354,16 @@ class Palette:
         assert current_palette is None or current_palette.crystallised
         assert not self.crystallised # make this case a no-op instead?
 
-        # TODO: IGNORING INITIAL current_palette = None CASE FOR NOW!
+        if current_palette is None:
+            # We need a "dummy" current_palette to start from; we set max_changes to 16
+            # so it can be completely replaced.
+            current_palette = Palette.default_palette()
+            max_changes = 16
+        else:
+            max_changes = 8
 
-        max_changes = 8
         old_palette = current_palette.crystallised_palette
-        new_palette = [set()*4]
+        new_palette = [set()] * 4
         pending_colours = set()
 
         # We iterate over the histogram using while/pop because we want to modify it as we
@@ -363,7 +374,7 @@ class Palette:
 
             assert len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes
 
-            new_palette_entries_used = entries_used(new_palette, pending_colours) 
+            new_palette_entries_used = Palette.entries_used(new_palette, pending_colours) 
             if new_palette_entries_used == 16:
                 # If we get here we have no further choices to make, so no point
                 # examining further histogram entries.
@@ -391,7 +402,7 @@ class Palette:
                 pgi = new_palette.index(palette_group)
                 new_palette_copy = copy.deepcopy(new_palette)
                 new_palette_copy[pgi].update(colour_set)
-                if entries_used(new_palette_copy, pending_colours) > 16:
+                if Palette.entries_used(new_palette_copy, pending_colours) > 16:
                     continue
 
                 assert len(new_palette_copy[pgi]) <= 4
