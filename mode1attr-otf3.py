@@ -277,7 +277,7 @@ class Palette:
         assert all(isinstance(x, int) for x in palette_union)
         assert all(0 <= colour <= 15 for colour in palette_union)
         assert Palette.entries_used(palette, pending_colours) <= 16
-        assert all(len(set(palette_group)) == len(palette_group) for palette_group in palette)
+        #assert all(len(set(palette_group)) == len(palette_group) for palette_group in palette)
         return True
 
     @staticmethod
@@ -308,8 +308,8 @@ class Palette:
             new_palette.append(best_new_palette_group)
             original_new_palette.remove(best_new_palette_group)
 
-        # Assign an order to the elements of the palette groups in the new palette,
-        # re-using the order from the old palette where possible.
+        # Assign an index to the elements of the palette groups in the new palette,
+        # re-using the index from the old palette where possible.
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = []
@@ -325,18 +325,21 @@ class Palette:
                     else:
                         new_palette_group_list.append(None)
             new_palette_list.append(new_palette_group_list)
+        new_palette = new_palette_list
+        new_palette_list = None
 
-        # Any remaining pending_colours need to be put into new_palette_list. We
+        # Any remaining pending_colours need to be put into new_palette We
         # prefer putting them in emptier palette groups; this is perhaps a bit
         # arbitrary.
         while len(pending_colours) > 0:
             best_palette_group = None
-            for palette_group in new_palette_list:
+            for palette_group in new_palette:
                 if None in palette_group and (best_palette_group is None or palette_group.count(None) > best_palette_group.count(None)):
-                    palette_group[palette_group.index(None)] = min(pending_colours)
-                    pending_colours.remove(min(pending_colours))
+                    best_palette_group = palette_group
+            best_palette_group[best_palette_group.index(None)] = min(pending_colours)
+            pending_colours.remove(min(pending_colours))
 
-        # If there are any leftover entries in new_palette_list, copy the corresponding
+        # If there are any leftover entries in new_palette, copy the corresponding
         # colours over from old_palette.
         for old_palette_group, new_palette_group in zip(old_palette, new_palette):
             for i in range(0, len(new_palette_group)):
@@ -347,9 +350,9 @@ class Palette:
         for i, (old_palette_group, new_palette_group) in enumerate(zip(old_palette, new_palette)):
             for j, (old_colour, new_colour) in enumerate(zip(old_palette_group, new_palette_group)):
                 if old_colour != new_colour:
-                    changes.append(i*4+j, new_colour)
+                    changes.append((i*4+j, new_colour))
 
-        return changes
+        return new_palette, changes
 
     def crystallise(self, current_palette):
         assert current_palette is None or current_palette.crystallised
@@ -360,8 +363,10 @@ class Palette:
             # so it can be completely replaced.
             current_palette = Palette.default_palette()
             max_changes = 16
+            changes_weight = 0
         else:
             max_changes = 8
+            changes_weight = 1.1
 
         old_palette = current_palette.crystallised_palette
         new_palette = [set() for i in range(0, 4)]
@@ -375,7 +380,8 @@ class Palette:
             pending_colours -= set.union(*new_palette)
             print "P", new_palette, pending_colours
 
-            assert len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes
+            _, changes = Palette.diff(old_palette, new_palette, pending_colours)
+            assert len(changes) <= max_changes
 
             new_palette_entries_used = Palette.entries_used(new_palette, pending_colours) 
             if new_palette_entries_used == 16:
@@ -394,7 +400,8 @@ class Palette:
                 # Single colours must go in somewhere, but we don't care where, so
                 # don't rush to place them.
                 pending_colours.add(elem(colour_set))
-                if len(Palette.diff(old_palette, new_palette, pending_colours)) > max_changes:
+                _, changes = Palette.diff(old_palette, new_palette, pending_colours)
+                if len(changes) > max_changes:
                     pending_colours.remove(elem(colour_set))
                 continue
 
@@ -414,8 +421,9 @@ class Palette:
                 #print "EEE", new_palette_copy
 
                 assert len(new_palette_copy[pgi]) <= 4
-                changes = len(Palette.diff(old_palette, new_palette_copy, pending_colours))
+                _, changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
                 #print "FFF", changes
+                changes = len(changes)
 
                 if changes > max_changes:
                     continue
@@ -436,7 +444,7 @@ class Palette:
                 # like this: [(4, 3, 2), (), (), ()]. Adding as few colours as possible
                 # favours putting 1 in with (4, 3, 2), but then that group is full so
                 # maybe we should put (1, 2) in one of the empty groups.
-                palette_group_score = -(changes*1.1 + new_colours_in_group)
+                palette_group_score = -(changes*changes_weight + new_colours_in_group)
 
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
                     best_palette_group = palette_group
@@ -478,9 +486,9 @@ class Palette:
 
 
 
-        self.crystallised_palette = new_palette # SFTODO: MAY NEED TO SET->LIST ON ELEMENTS?
+        self.crystallised_palette, changes = Palette.diff(old_palette, new_palette, pending_colours)
         self.crystallised = True
-        return Palette.diff(old_palette, new_palette)
+        return changes
 
 
 
@@ -525,6 +533,7 @@ for y in range(0, ysize):
 for y in range(0, ysize):
     print "Y", y
     palette_actions = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
+    print "Y", y, palette_by_y[y].crystallised_palette
 
 
 
