@@ -320,7 +320,7 @@ class Palette:
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
         print "AOLD", old_palette
-        print "ANEW", new_palette
+        print "ANEW", new_palette, pending_colours
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = []
@@ -331,7 +331,7 @@ class Palette:
                     new_palette_group_set.discard(old_colour)
                     pending_colours.discard(old_colour)
                 else:
-                    if len(new_palette_group_set) > 0:
+                    if len(new_palette_group_set - set(old_palette_group)) > 0:
                         #print "Q1", new_palette_group_list, new_palette_group_set
                         new_palette_group_list.append(min(new_palette_group_set))
                         new_palette_group_set.remove(min(new_palette_group_set))
