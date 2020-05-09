@@ -328,28 +328,20 @@ class Palette:
                         return True
                 return False
 
-            if len(colour_set) == 3:
-                if try_add_colour_set_to_palette_group(new_palette):
-                    continue
-                # We couldn't fit the colour triple in. Let's distribute its frequency count
-                # among its three sub-pairs.
-                t = tuple(colour_set)
-                f = freq / 3.0
-                self.hist.append((frozenset(t[0], t[1]), f))
-                self.hist.append((frozenset(t[0], t[2]), f))
-                self.hist.append((frozenset(t[1], t[1]), f))
-                self.hist = sorted(self.hist.items(), key=lambda x: x[1], reverse=True)
-                continue
-
-            # TODO: This case is v similar to len==3 case, maybe factor it out some more
-            assert len(colour_set) == 2
             if try_add_colour_set_to_palette_group(new_palette):
                 continue
-            # We couldn't fit the colour pair in. Let's distribute its frequency count
-            # among its component colours.
+            # The colour set can't be added as a unit, so divide its frequency count among
+            # its components (colour triples decay to colour pairs, colour pairs decay to
+            # single colours) and carry on.
+            new_hist = defaultdict(set)
+            for colour_set, freq in self.hist:
+                new_hist[colour_set] += freq
             t = tuple(colour_set)
-            f = freq / 2.0
-            self.hist.append((frozenset(t[0]), f)
+            f = freq / float(len(colour_set))
+            for i in range(0, len(colour_set)):
+                for j in range(i+1, len(colour_set)):
+                    new_hist[frozenset(t[i], t[j])] += f
+            self.hist = sorted(new_hist.items(), key=lambda x: x[1], reverse=True)
 
 
             
