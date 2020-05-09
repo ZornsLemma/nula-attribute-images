@@ -323,11 +323,12 @@ class Palette:
                 best_old_palette_group_index = None
                 for i in old_palette_indices:
                     old_palette_group = old_palette[i]
-                    # We apply a small negative score for the length of new_palette_group
+                    # We apply a small positive score for the length of new_palette_group
                     # in order to avoid "stealing" a new_palette group early on when we have
                     # empty groups as well as non-empty ones; we need to make the empty groups
                     # preferable when there is nothing in common.
-                    score = len(set(old_palette_group).intersection(new_palette_group))*10 - len(new_palette_group)
+                    SFTODO THIS IS WRONG WE ARE STILL ORDER DEPENDENT
+                    score = len(set(old_palette_group).intersection(new_palette_group))*10 + len(new_palette_group)
                     if best_old_palette_group_index is None or score > best_old_palette_group_score:
                         best_old_palette_group_index = i
                         best_old_palette_group_score = score
@@ -341,8 +342,8 @@ class Palette:
 
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
-        print "AOLD", old_palette
-        print "ANEW", new_palette, pending_colours
+        #print "AOLD", old_palette
+        #print "ANEW", new_palette, pending_colours
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = []
@@ -363,7 +364,7 @@ class Palette:
             new_palette_list.append(new_palette_group_list)
         new_palette = new_palette_list
         new_palette_list = None
-        print "BNEW", new_palette
+        #print "BNEW", new_palette
 
         # Any remaining pending_colours need to be put into new_palette We
         # prefer putting them in emptier palette groups; this is perhaps a bit
@@ -458,10 +459,10 @@ class Palette:
                 #print "EEE", new_palette_copy
 
                 assert len(new_palette_copy[palette_group_index]) <= 4
-                print "E1", old_palette
-                print "E2", new_palette_copy, pending_colours
+                #print "E1", old_palette
+                #print "E2", new_palette_copy, pending_colours
                 _, changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
-                print "E3", len(changes), changes
+                #print "E3", len(changes), changes
                 #print "FFF", changes
                 changes = len(changes)
 
@@ -477,6 +478,7 @@ class Palette:
                 # TODO: could probably tweak weightings here
                 # TODO: We are *probably* a little too keen to fill up a nearly-full palette with a colouir triple; it would be one thing if *none* of those colours were already in the palette, but if we have two of them in separate sets this feels a little bit out of order. Then again, if the frequency count says the colour triple is next in priority perhaps this is fine.
                 palette_group_score = -(changes*changes_weight + new_colours_in_group + 0.25*new_group_size)
+                print "PQ", old_palette, new_palette_copy, pending_colours
                 print "Q", palette_group, palette_group_score, changes, new_colours_in_group, new_group_size
 
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
