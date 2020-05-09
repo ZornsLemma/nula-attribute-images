@@ -376,9 +376,10 @@ class Palette:
         # go through.
         while len(self.hist) > 0:
             colour_set, freq = self.hist.pop(0)
-            print "H", colour_set, freq, len(self.hist)
             pending_colours -= set.union(*new_palette)
-            print "P", new_palette, pending_colours
+            print
+            print "P-pre", new_palette, pending_colours
+            print "H", colour_set, freq, len(self.hist)
 
             _, changes = Palette.diff(old_palette, new_palette, pending_colours)
             assert len(changes) <= max_changes
@@ -429,22 +430,15 @@ class Palette:
                     continue
 
                 new_colours_in_group = len(colour_set - palette_group)
+                new_group_size = len(palette_group.union(colour_set))
 
                 # We give changes a slightly higher weighting so if two alternatives
                 # both add the same number of new colours, we prefer the one which can
                 # be done with fewest changes.
                 # TODO: could probably tweak weightings here
-                # TODO: We could possibly try to consider "how much space is left
-                # in the palette group" as a factor here - we currently add positive
-                # weight for adding as few colours as possible to an existing palette
-                # group, which will encourage "clumping", but we might also want to
-                # add positive weight for "leaving space free for later additions". I
-                # think these are obviously opposing tendencies but I don't think they're
-                # the same, e.g. suppose we want to add (1, 2) and the palette looks
-                # like this: [(4, 3, 2), (), (), ()]. Adding as few colours as possible
-                # favours putting 1 in with (4, 3, 2), but then that group is full so
-                # maybe we should put (1, 2) in one of the empty groups.
-                palette_group_score = -(changes*changes_weight + new_colours_in_group)
+                # TODO: We are *probably* a little too keen to fill up a nearly-full palette with a colouir triple; it would be one thing if *none* of those colours were already in the palette, but if we have two of them in separate sets this feels a little bit out of order. Then again, if the frequency count says the colour triple is next in priority perhaps this is fine.
+                palette_group_score = -(changes*changes_weight + new_colours_in_group + 0.25*new_group_size)
+                print "Q", palette_group, palette_group_score, changes, new_colours_in_group, new_group_size
 
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
                     best_palette_group = palette_group
