@@ -283,7 +283,6 @@ class Palette:
 
             assert len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes
 
-
             new_palette_entries_used = entries_used(new_palette, pending_colours) 
             if new_palette_entries_used == 16:
                 # If we get here we have no further choices to make, so no point
@@ -295,9 +294,6 @@ class Palette:
                 # Nothing to do, we can represent this perfectly
                 continue
 
-            # Decide what we'd like to do without worrying about max_changes first
-            # TODO: WE WILL NEED TO REVERT ANY CHANGES TO new_palette AND pending_colours IF WE CHANGE OUR MIND WHEN WE *DO* WORRY ABOUT max_changes
-
             if len(colour_set) == 1:
                 # Single colours must go in somewhere, but we don't care where, so
                 # don't rush to place them.
@@ -306,31 +302,56 @@ class Palette:
                     pending_colours.remove(elem(colour_set))
                 continue
 
-            # TODO: In the following cases (for both len 2 and 3) where we might have a choice
-            # where to add, we should perhaps be factoring in the change in 
-            # len(Palette.diff(old_palette, new_palette)) when deciding which palette group to
-            # add to. This might be *as well as* considering adding as few new colours to new_palette
-            # as possible or *instead of*.
-
-            # Try to add a colour set to a single palette group within a palette. If
-            # we have a choice we prefer adding as few new colours as possible.
-            # TODO: we should perhaps be factoring in the change in
-            # len(Palette.diff(old_palette, new_palette)) when deciding which palette
-            # group to add to. This might be *as well as* considering adding as few
-            # new colours to new_palette as possible or *instead of*.
+            # Try to add a colour set to a single palette group within a palette.
             best_palette_group = None
             for palette_group in new_palette:
-                if len(colour_set.union(palette_group)) <= 4 and (
-                        best_palette_group is None or 
-                        len(colour_set - palette_group) < len(colour_set - best_palette_group)):
+                if len(colour_set.union(palette_group)) > 4:
+                    continue
+
+                pgi = new_palette.index(palette_group)
+                new_palette_copy = copy.deepcopy(new_palette)
+                new_palette_copy[pgi].update(colour_set)
+                if entries_used(new_palette_copy, pending_colours) > 16:
+                    continue
+
+                assert len(new_palette_copy[pgi]) <= 4
+                changes = Palette.diff(old_palette, new_palette_copy, pending_colours)
+
+                if changes > max_changes:
+                    continue
+
+                new_colours_in_group = len(colour_set - palette_group)
+
+                # We give changes a slightly higher weighting so if two alternatives
+                # both add the same number of new colours, we prefer the one which can
+                # be done with fewest changes.
+                # TODO: could probably tweak weightings here
+                # TODO: We could possibly try to consider "how much space is left
+                # in the palette group" as a factor here - we currently add positive
+                # weight for adding as few colours as possible to an existing palette
+                # group, which will encourage "clumping", but we might also want to
+                # add positive weight for "leaving space free for later additions". I
+                # think these are obviously opposing tendencies but I don't think they're
+                # the same, e.g. suppose we want to add (1, 2) and the palette looks
+                # like this: [(4, 3, 2), (), (), ()]. Adding as few colours as possible
+                # favours putting 1 in with (4, 3, 2), but then that group is full so
+                # maybe we should put (1, 2) in one of the empty groups.
+                palette_group_score = -(changes*1.1 + new_colours_in_group)
+
+                if best_palette_group is None or palette_group_score > best_palette_group_score:
                     best_palette_group = palette_group
+                    best_palette_group_score = palette_group_score
+
+                    best_palette_group is None or 
+                    len(colour_set - palette_group) < len(colour_set - best_palette_group)):
+                best_palette_group = palette_group
+
             if best_palette_group is not None:
-                if entries_used(new_palette, pending_colours) + len(colour_set - best_palette_group) <= 16:
-                    saved_new_palette = copy.deepcopy(new_palette)
-                    best_palette_group.update(colour_set)
-                    if len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes:
-                        continue
-                    new_palette = saved_new_palette
+                saved_new_palette = copy.deepcopy(new_palette)
+                best_palette_group.update(colour_set)
+                if len(Palette.diff(old_palette, new_palette, pending_colours)) <= max_changes:
+                    continue
+                new_palette = saved_new_palette
 
             # The colour set can't be added as a unit, so divide its frequency count among
             # its components (colour triples decay to colour pairs, colour pairs decay to
