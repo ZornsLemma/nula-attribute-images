@@ -303,30 +303,53 @@ class Palette:
                 pending_colours.add(elem(colour_set))
                 continue
 
-            if len(colour_set) == 3:
-                # If we can fit a colour triple in somewhere, do it. We prefer adding as
-                # few new colours to the palette as possible if we have a choice.
+            # TODO: In the following cases (for both len 2 and 3) where we might have a choice
+            # where to add, we should perhaps be factoring in the change in 
+            # len(Palette.diff(old_palette, new_palette)) when deciding which palette group to
+            # add to. This might be *as well as* considering adding as few new colours to new_palette
+            # as possible or *instead of*.
+
+            def try_add_colour_set_to_palette_group(palette):
+                # Try to add a colour set to a single palette group within a palette. If
+                # we have a choice we prefer adding as few new colours as possible.
+                # TODO: we should perhaps be factoring in the change in
+                # len(Palette.diff(old_palette, new_palette)) when deciding which palette
+                # group to add to. This might be *as well as* considering adding as few
+                # new colours to new_palette as possible or *instead of*.
                 best_palette_group = None
-                for palette_group in new_palette:
+                for palette_group in palette:
                     if len(colour_set.union(palette_group)) <= 4 and (
                             best_palette_group is None or 
                             len(colour_set - palette_group) < len(colour_set - best_palette_group)):
                         best_palette_group = palette_group
                 if best_palette_group is not None:
-                    if new_palette_entries_used + len(colour_set - best_palette_group) <= 16:
+                    if entries_used(palette) + len(colour_set - best_palette_group) <= 16:
                         best_palette_group.update(colour_set)
-                        continue
+                        return True
+                return False
+
+            if len(colour_set) == 3:
+                if try_add_colour_set_to_palette_group(new_palette):
+                    continue
                 # We couldn't fit the colour triple in. Let's distribute its frequency count
                 # among its three sub-pairs.
-                colour_triple = tuple(colour_set)
+                t = tuple(colour_set)
                 f = freq / 3.0
-                self.hist.append((frozenset(colour_triple[0], colour_triple[1]), f))
-                self.hist.append((frozenset(colour_triple[0], colour_triple[2]), f))
-                self.hist.append((frozenset(colour_triple[1], colour_triple[1]), f))
+                self.hist.append((frozenset(t[0], t[1]), f))
+                self.hist.append((frozenset(t[0], t[2]), f))
+                self.hist.append((frozenset(t[1], t[1]), f))
                 self.hist = sorted(self.hist.items(), key=lambda x: x[1], reverse=True)
                 continue
 
+            # TODO: This case is v similar to len==3 case, maybe factor it out some more
             assert len(colour_set) == 2
+            if try_add_colour_set_to_palette_group(new_palette):
+                continue
+            # We couldn't fit the colour pair in. Let's distribute its frequency count
+            # among its component colours.
+            t = tuple(colour_set)
+            f = freq / 2.0
+            self.hist.append((frozenset(t[0]), f)
 
 
             
