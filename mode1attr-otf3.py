@@ -595,188 +595,15 @@ for y in range(0, ysize):
     palette_by_y[y] = Palette(window_hist)
 
 
+palette_actions_by_y = [None]*ysize
 for y in range(0, ysize):
     print "Y", y
-    palette_actions = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
-    print "Y", y, palette_by_y[y].crystallised_palette, len(palette_actions)
+    palette_actions_by_y[y] = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
+    print "Y", y, palette_by_y[y].crystallised_palette, len(palette_actions_by_y[y])
 
 
 
 
-
-assert False
-
-
-
-
-hist_all = defaultdict(int)
-for y in range(0, ysize):
-    for colour_set, freq in hist_by_y[y]:
-        hist_all[colour_set] += freq
-hist_all = sorted(hist_all.items(), key=lambda x: x[1], reverse=True)
-#for colour_set, freq in hist_all:
-#    print colour_set, freq
-
-common_palette = [set() for i in range(0, 4)]
-common_colours = 8
-pending_unpaired_colours = set()
-for colour_set, freq in hist_all:
-    palette_union = set.union(*common_palette)
-    palette_union_with_unpaired = palette_union.union(pending_unpaired_colours)
-    print
-    print len(palette_union_with_unpaired), palette_union, pending_unpaired_colours
-    print "A", colour_set, freq
-    assert len(palette_union_with_unpaired) <= common_colours
-    palette_full = (len(palette_union_with_unpaired) == common_colours)
-    if palette_full and len(pending_unpaired_colours) == 0:
-        break
-    assert len(colour_set) <= 2
-    if colour_set.issubset(palette_union):
-        # Nothing to do; we only allow each colour to appear once in the common
-        # palette.
-        pass
-    elif len(colour_set) == 1:
-        if not palette_full:
-            # Colours used unpaired must appear *somewhere*. but we don't commit to
-            # anywhere yet to keep options open for paired colours.
-            pending_unpaired_colours.add(tuple(colour_set)[0])
-    else:
-        new_colours = colour_set - palette_union
-        colours_needed = len(new_colours)
-        assert 1 <= colours_needed <= 2
-        if colours_needed == 1:
-            new_colour = tuple(new_colours)[0]
-            old_colour = tuple(colour_set - set([new_colour]))[0]
-            if not palette_full or new_colour in pending_unpaired_colours:
-                # If there's space in the palette group containing old_colour, add
-                # new_colour to it. Otherwise there's not much we can do.
-                # TODO: Should we include the colour as a single colour? Not sure.
-                for palette_group in common_palette:
-                    if old_colour in palette_group:
-                        if len(palette_group) < 4:
-                            palette_group.add(new_colour)
-                        break
-        else:
-            if len(palette_union_with_unpaired.union(new_colours)) <= common_colours:
-                # Add both colours to the emptiest palette group we can find. If
-                # there isn't one (unlikely, but if common_colours is high it may
-                # happen) there's not much we can do.
-                best_palette_group = None
-                for palette_group in common_palette:
-                    if len(palette_group) <= 2 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                        best_palette_group = palette_group
-                if best_palette_group is not None:
-                    best_palette_group.update(new_colours)
-
-        palette_union = set.union(*common_palette)
-        pending_unpaired_colours -= palette_union
-
-# TODO: I think this assert could fail in principle, and we would need to pick an arbitrary
-# palette group (should we prefer a full or empty one?) to put it in. Not a big deal, but
-# I'm going to wait until it happens before I worry about that.
-assert len(pending_unpaired_colours) == 0
-
-print "PUC", pending_unpaired_colours
-print "Common palette:", common_palette
-#visualise_palette(common_palette, "zpal.png")
-common_palette_union = set.union(*common_palette)
-#SFTODO = raw_input("")
-
-if False:
-    palette = []
-    for i in range(0, 4):
-        palette.append(set(range(i*4, (i+1)*4)))
-    visualise_palette(palette, "zpal.png")
-    palette = None
-
-# TODO: Code very similar to previous common_palette build up, but let's just write it
-# out again for the moment to ease tinkering
-# Build up per-line palettes based on the common palette. Note that because the remaining
-# palette entries are changed on a per-line basis, we don't insist on each colour appearing
-# no more than once here; if it's helpful, we allow duplicates.
-palette_by_y = [None]*ysize
-for y in range(0, ysize):
-    print
-    print "Y", y
-    palette = copy.deepcopy(common_palette)
-    pending_unpaired_colours = set()
-    for colour_set, freq in hist_by_y[y]:
-        palette_union = set.union(*palette) # note that while valid, this may lose the fact some colours are in the palette multiple times, so its *length* is kind of meaningless
-        palette_entries_used = sum(len(palette_group) for palette_group in palette) + len(pending_unpaired_colours)
-        print
-        print palette_entries_used, palette, pending_unpaired_colours
-        print "B", colour_set, freq
-        assert palette_entries_used <= 16
-        palette_full = (palette_entries_used == 16)
-        if palette_full and len(pending_unpaired_colours) == 0:
-            break
-        # If the current palette perfectly handles this colour set, no action is needed.
-        if any(colour_set.issubset(palette_group) for palette_group in palette):
-            continue
-        assert 1 <= len(colour_set) <= 2
-        if len(colour_set) == 1:
-            new_colour = tuple(colour_set)[0]
-            if new_colour not in palette_union and new_colour not in pending_unpaired_colours and not palette_full:
-                pending_unpaired_colours.add(new_colour)
-        else:
-            best_palette_group = None
-            colour_a = tuple(colour_set)[0]
-            colour_b = tuple(colour_set)[1]
-            print "AAA", colour_a, colour_b
-            for palette_group in palette:
-                if colour_a in palette_group:
-                    print "QQ"
-                    assert colour_b not in palette_group
-                    if len(palette_group) < 4 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                        best_palette_group = palette_group
-                elif colour_b in palette_group:
-                    print "ZZ"
-                    assert colour_a not in palette_group
-                    if len(palette_group) < 4 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                        best_palette_group = palette_group
-            if best_palette_group is not None:
-                print "WW", palette_full
-                # We found a palette group with one of our two colours and room for the other.
-                new_colour = tuple(colour_set - best_palette_group)[0]
-                print "WW2", new_colour, colour_set - best_palette_group
-                if not palette_full or new_colour in pending_unpaired_colours:
-                    best_palette_group.add(new_colour)
-            else:
-                # The only way we're going to be able to use this colour pair is by adding them
-                # both to the same palette group.
-                best_palette_group = None
-                for palette_group in palette:
-                    if len(palette_group) <= 2 and (best_palette_group is None or len(palette_group) < len(best_palette_group)):
-                        best_palette_group = palette_group
-                if best_palette_group is not None:
-                    new_palette_entries_taken = len(colour_set - pending_unpaired_colours)
-                    if palette_entries_used + new_palette_entries_taken <= 16:
-                        best_palette_group.update(colour_set)
-
-        palette_union = set.union(*palette)
-        pending_unpaired_colours -= palette_union
-
-    for colour in pending_unpaired_colours:
-        for palette_group in palette:
-            if len(palette_group) < 4:
-                palette_group.add(colour)
-                break
-
-    # Just to keep things simple (since it won't hurt for now) if we have some spare entries
-    # in the palette we force a colour into them so all palettes do have 16 entries.
-    for palette_group in palette:
-        while len(palette_group) < 4:
-            new_colour = tuple(set(range(0, 16)) - palette_group)[0]
-            palette_group.add(new_colour)
-
-
-
-    print "PUC", pending_unpaired_colours
-    print "Y palette:", palette
-    palette_by_y[y] = palette
-
-    #visualise_palette(palette, "zpal.png")
-    #SFTODO = raw_input("")
 
 
 nula_palette = bytearray()
@@ -810,25 +637,10 @@ changes_per_line = 8 # in file, not "can be done without flicker"
 ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 for y in range(1, ysize):
-    bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
     line_changes = bytearray()
-    for bbc_colour, (previous_original_colour, new_original_colour) in enumerate(zip(previous_bbc_to_original_colour_map, bbc_to_original_colour_map)):
-        if previous_original_colour != new_original_colour:
-            if y == 110:
-                print "EZ", bbc_colour, previous_original_colour, new_original_colour
-            line_changes += chr((bbc_colour<<4) | (new_original_colour ^ 7))
-    #print y, len(line_changes)
-    assert len(line_changes) <= 16 - common_colours
-    previous_bbc_to_original_colour_map = bbc_to_original_colour_map
-    if y == 110:
-        print "LC", line_changes
-        #assert False
-    if False:
-        # HACK FOR DEBUGGING (IN COMBINATION WITH PROCstripes)
-        if y<=10:
-            line_changes = bytearray([0x60 | (15^7)])
-        else:
-            line_changes = bytearray([0x60 | ((y % 15) ^ 7)]) # TODO: "SHOULD" BE % 16 BUT LEAVE IT FOR NOW
+    for change in palette_actions_by_y:
+        line_changes += chr((change[0]<<4) | (change[1]^7))
+    assert len(line_changes) <= changes_per_line
 
     # We always make all the changes, so if we aren't using the maximum number of changes
     # we must provide some safe no-op data. If we have no changes at all we copy the
