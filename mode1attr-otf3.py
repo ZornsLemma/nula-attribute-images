@@ -297,94 +297,39 @@ class Palette:
         # The order of the rows in the palettes is arbitrary (we can just adjust the
         # attribute values on the pixel data as we encode it), so reorder new_palette
         # to minimise the pairwise differences.
-        print "FA0", old_palette
-        print "FA1", new_palette
-        if False:
-            old_palette_set = [set(palette_group) for palette_group in old_palette]
-            original_new_palette = new_palette
-            new_palette = []
-            for old_palette_group in old_palette_set:
-                best_new_palette_group = None
-                for new_palette_group in original_new_palette:
-                    # We apply a small negative score for the length of new_palette_group
-                    # in order to avoid "stealing" a new_palette group early on when we have
-                    # empty groups as well as non-empty ones; we need to make the empty groups
-                    # preferable when there is nothing in common.
-                    score = len(old_palette_group.intersection(new_palette_group))*10 + len(new_palette_group)
-                    if best_new_palette_group is None or score > best_new_palette_group_score:
-                        best_new_palette_group = new_palette_group
-                        best_new_palette_group_score = score
-                new_palette.append(best_new_palette_group)
-                original_new_palette.remove(best_new_palette_group)
-        elif False:
-            old_palette_indices = set(range(0, len(old_palette)))
-            new_palette_group_reordered = [None] * 4
-            for new_palette_group in new_palette:
-                print "PC", new_palette_group
-                best_old_palette_group_index = None
-                for i in old_palette_indices:
-                    old_palette_group = old_palette[i]
-                    # We apply a small negative score for the length of new_palette_group
-                    # in order to avoid "stealing" a new_palette group early on when we have
-                    # empty groups as well as non-empty ones; we need to make the empty groups
-                    # preferable when there is nothing in common.
-                    score = len(set(old_palette_group).intersection(new_palette_group))*10 - len(old_palette_group)
-                    #print "PQ", i, score
-                    if best_old_palette_group_index is None or score > best_old_palette_group_score:
-                        best_old_palette_group_index = i
-                        best_old_palette_group_score = score
-                new_palette_group_reordered[best_old_palette_group_index] = new_palette_group
-                old_palette_indices.remove(best_old_palette_group_index)
-                #print "PD", new_palette_group, old_palette_indices
-            new_palette = new_palette_group_reordered
-        elif False:
-            similarity = [[0]*4]*4
-            for old_palette_group_index, old_palette_group in enumerate(old_palette):
-                for new_palette_group_index, new_palette_group in enumerate(new_palette):
-                    similarity[new_palette_group_index][old_palette_group_index] = len(set(old_palette_group) - new_palette_group)
-            new_palette_group_reordered = [None] * 4
-            for new_palette_group_index, new_palette_group in enumerate(new_palette):
-                old_palette_group_index = similarity[new_palette_group_index].index(max(similarity[new_palette_group_index]))
-                new_palette_group_reordered[new_palette_group_index] = new_palette_group
-                similarity[new_palette_group_index] = [-1, -1, -1, -1]
-            new_palette = new_palette_group_reordered
-        else:
-            new_palette_reordered = [None] * 4
-            old_palette_copy = old_palette[:]
-            for new_palette_group in sorted(new_palette, key=lambda x: len(x), reverse=True):
-                best_old_palette_group = None
-                for old_palette_group_index, old_palette_group in enumerate(old_palette_copy):
-                    if old_palette_group is not None and (best_old_palette_group is None or old_palette_group is not None and len(set(old_palette_group).intersection(new_palette_group)) > len(set(best_old_palette_group).intersection(new_palette_group))):
-                        best_old_palette_group = old_palette_group
-                        best_old_palette_group_index = old_palette_group_index
-                new_palette_reordered[best_old_palette_group_index] = new_palette_group
-                old_palette_copy[best_old_palette_group_index] = None
-            new_palette = new_palette_reordered
-
-
-
-
-
-        print "FA2", new_palette
+        #print "FA0", old_palette
+        #print "FA1", new_palette
+        new_palette_reordered = [None] * 4
+        old_palette_copy = old_palette[:]
+        for new_palette_group in sorted(new_palette, key=lambda x: len(x), reverse=True):
+            best_old_palette_group = None
+            for old_palette_group_index, old_palette_group in enumerate(old_palette_copy):
+                if old_palette_group is not None and (best_old_palette_group is None or old_palette_group is not None and len(set(old_palette_group).intersection(new_palette_group)) > len(set(best_old_palette_group).intersection(new_palette_group))):
+                    best_old_palette_group = old_palette_group
+                    best_old_palette_group_index = old_palette_group_index
+            new_palette_reordered[best_old_palette_group_index] = new_palette_group
+            old_palette_copy[best_old_palette_group_index] = None
+        new_palette = new_palette_reordered
+        #print "FA2", new_palette
 
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
-        print "AOLD", old_palette
-        print "ANEW", new_palette, pending_colours
+        #print "AOLD", old_palette
+        #print "ANEW", new_palette, pending_colours
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = [None]*4
-            print "AB", old_palette_group, new_palette_group_set
+            #print "AB", old_palette_group, new_palette_group_set
             for i, old_colour in enumerate(old_palette_group):
-                print "WW", i, old_colour, new_palette_group_set
+                #print "WW", i, old_colour, new_palette_group_set
                 if old_colour in new_palette_group_set or (
                         (len(new_palette_group_set) + len(new_palette_group_list)) < 4 and old_colour in pending_colours):
-                    print "XX", i
+                    #print "XX", i
                     new_palette_group_list[i] = old_colour
                     new_palette_group_set.discard(old_colour)
                     pending_colours.discard(old_colour)
                 else:
-                    print "YY", i
+                    #print "YY", i
                     if len(new_palette_group_set - set(old_palette_group)) > 0:
                         #print "Q1", new_palette_group_list, new_palette_group_set
                         candidates = new_palette_group_set - set(old_palette_group)
@@ -394,7 +339,7 @@ class Palette:
             new_palette_list.append(new_palette_group_list)
         new_palette = new_palette_list
         new_palette_list = None
-        print "BNEW", new_palette
+        #print "BNEW", new_palette
 
         # Any remaining pending_colours need to be put into new_palette We
         # prefer putting them in emptier palette groups; this is perhaps a bit
@@ -445,9 +390,9 @@ class Palette:
         while len(self.hist) > 0:
             colour_set, freq = self.hist.pop(0)
             pending_colours -= set.union(*new_palette)
-            print
-            print "P-pre", new_palette, pending_colours
-            print "H", colour_set, freq, len(self.hist)
+            #print
+            #print "P-pre", new_palette, pending_colours
+            #print "H", colour_set, freq, len(self.hist)
 
             _, changes = Palette.diff(old_palette, new_palette, pending_colours)
             assert len(changes) <= max_changes
@@ -509,7 +454,7 @@ class Palette:
                 # TODO: We are *probably* a little too keen to fill up a nearly-full palette with a colouir triple; it would be one thing if *none* of those colours were already in the palette, but if we have two of them in separate sets this feels a little bit out of order. Then again, if the frequency count says the colour triple is next in priority perhaps this is fine.
                 palette_group_score = -(changes*changes_weight + new_colours_in_group + 0.25*new_group_size)
                 #print "PQ", old_palette, new_palette_copy, pending_colours
-                print "Q", palette_group, palette_group_score, changes, new_colours_in_group, new_group_size
+                #print "Q", palette_group, palette_group_score, changes, new_colours_in_group, new_group_size
 
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
                     best_palette_group = palette_group
@@ -547,7 +492,7 @@ class Palette:
 
 
         pending_colours -= set.union(*new_palette)
-        print "FINALDIFF", old_palette, new_palette, pending_colours
+        #print "FINALDIFF", old_palette, new_palette, pending_colours
         self.crystallised_palette, changes = Palette.diff(old_palette, new_palette, pending_colours)
         self.crystallised = True
         return changes
@@ -603,7 +548,7 @@ for y in range(0, ysize):
 
 palette_actions_by_y = [None]*ysize
 for y in range(0, ysize):
-    print "Y", y
+    #print "Y", y
     palette_actions_by_y[y] = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
     print "Y", y, palette_by_y[y].crystallised_palette, len(palette_actions_by_y[y])
 
@@ -630,7 +575,7 @@ def SFTODORENAME(palette):
     return original_to_bbc_colour_map
 
 ula_palette = bytearray()
-print "QQQX", palette_by_y[0].crystallised_palette
+#print "QQQX", palette_by_y[0].crystallised_palette
 bbc_colour = 0
 for palette_group in palette_by_y[0].crystallised_palette:
     for original_colour in palette_group:
@@ -698,14 +643,14 @@ for y_block in range(0, ysize, 8):
             bbc_colour_range = set(range(palette_index*4, (palette_index+1)*4))
             for original_colour in adjusted_pixels:
                 bbc_pixels.append(tuple(bbc_colour_range.intersection(original_to_bbc_colour_map[original_colour]))[0] % 4)
-            if y <= 1:
-                print "pal", palette_by_y[y]
-                print "pixels", pixels
-                print "palidx", palette_index
-                print "adjpix", adjusted_pixels                
-                print "bbcpix", bbc_pixels
-                #if y == 1:
-                #    assert False
+            #if y <= 1:
+            #    print "pal", palette_by_y[y]
+            #    print "pixels", pixels
+            #    print "palidx", palette_index
+            #    print "adjpix", adjusted_pixels                
+            #    print "bbcpix", bbc_pixels
+            #    #if y == 1:
+            #    #    assert False
 
             #assert bbc_colour_map[adjusted_pixels[0]]/4 == bbc_colour_map[adjusted_pixels[1]]/4
             #assert bbc_colour_map[adjusted_pixels[1]]/4 == bbc_colour_map[adjusted_pixels[2]]/4
