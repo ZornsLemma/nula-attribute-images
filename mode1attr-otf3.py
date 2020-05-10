@@ -246,7 +246,6 @@ def elem(s):
 
 
 
-
 class Palette:
     def __init__(self, hist):
         self.hist = hist[:]
@@ -539,6 +538,7 @@ class Palette:
 
 
         pending_colours -= set.union(*new_palette)
+        print "FINALDIFF", old_palette, new_palette, pending_colours
         self.crystallised_palette, changes = Palette.diff(old_palette, new_palette, pending_colours)
         self.crystallised = True
         return changes
@@ -568,6 +568,15 @@ def merge_hist(hist_list):
 #for a, b in foo:
 #    print a, b
 #assert False
+
+
+a = Palette([])
+a.crystallised = True
+a.crystallised_palette = [[2, 5, 1, 7], [6, 8, 10, 13], [1, 6, 14, 15], [1, 5, 8, 10]]
+b = Palette(merge_hist(raw_hist_by_y[7:7+5]))
+print b.crystallise(a)
+assert False
+
 
 window_size = 5
 palette_by_y = [None]*ysize
