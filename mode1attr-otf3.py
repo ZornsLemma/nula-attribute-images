@@ -372,21 +372,24 @@ class Palette:
         print "ANEW", new_palette, pending_colours
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
-            new_palette_group_list = []
+            new_palette_group_list = [None]*4
+            print "AB", old_palette_group, new_palette_group_set
             for i, old_colour in enumerate(old_palette_group):
+                print "WW", i, old_colour, new_palette_group_set
                 if old_colour in new_palette_group_set or (
                         (len(new_palette_group_set) + len(new_palette_group_list)) < 4 and old_colour in pending_colours):
-                    new_palette_group_list.append(old_colour)
+                    print "XX", i
+                    new_palette_group_list[i] = old_colour
                     new_palette_group_set.discard(old_colour)
                     pending_colours.discard(old_colour)
                 else:
+                    print "YY", i
                     if len(new_palette_group_set - set(old_palette_group)) > 0:
                         #print "Q1", new_palette_group_list, new_palette_group_set
-                        new_palette_group_list.append(min(new_palette_group_set))
-                        new_palette_group_set.remove(min(new_palette_group_set))
+                        candidates = new_palette_group_set - set(old_palette_group)
+                        new_palette_group_list[i] = min(candidates)
+                        new_palette_group_set.remove(min(candidates))
                         #print "Q2", new_palette_group_list, new_palette_group_set
-                    else:
-                        new_palette_group_list.append(None)
             new_palette_list.append(new_palette_group_list)
         new_palette = new_palette_list
         new_palette_list = None
@@ -570,12 +573,12 @@ def merge_hist(hist_list):
 #assert False
 
 
-a = Palette([])
-a.crystallised = True
-a.crystallised_palette = [[2, 5, 1, 7], [6, 8, 10, 13], [1, 6, 14, 15], [1, 5, 8, 10]]
-b = Palette(merge_hist(raw_hist_by_y[7:7+5]))
-print b.crystallise(a)
-assert False
+#a = Palette([])
+#a.crystallised = True
+#a.crystallised_palette = [[2, 5, 1, 7], [6, 8, 10, 13], [1, 6, 14, 15], [1, 5, 8, 10]]
+#b = Palette(merge_hist(raw_hist_by_y[7:7+5]))
+#print b.crystallise(a)
+#assert False
 
 
 window_size = 5
