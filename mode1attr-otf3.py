@@ -539,15 +539,6 @@ class Palette:
 
 
         pending_colours -= set.union(*new_palette)
-        assert len(pending_colours) == 0 # TODO CAN PROBABLY FAIL BUT WORRY WHEN IT HAPPENS, WE JUSTNEED TO STUFF THE COLOURS IN TAKING INTO ACCOUNT OLD PALETTE
-
-
-
-
-
-
-
-
         self.crystallised_palette, changes = Palette.diff(old_palette, new_palette, pending_colours)
         self.crystallised = True
         return changes
@@ -595,7 +586,7 @@ for y in range(0, ysize):
 for y in range(0, ysize):
     print "Y", y
     palette_actions = palette_by_y[y].crystallise(None if y == 0 else palette_by_y[y-1])
-    print "Y", y, palette_by_y[y].crystallised_palette
+    print "Y", y, palette_by_y[y].crystallised_palette, len(palette_actions)
 
 
 
