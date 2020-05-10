@@ -297,8 +297,8 @@ class Palette:
         # The order of the rows in the palettes is arbitrary (we can just adjust the
         # attribute values on the pixel data as we encode it), so reorder new_palette
         # to minimise the pairwise differences.
-        print "FA0", old_palette
-        print "FA1", new_palette
+        #print "FA0", old_palette
+        #print "FA1", new_palette
         if False:
             old_palette_set = [set(palette_group) for palette_group in old_palette]
             original_new_palette = new_palette
@@ -329,13 +329,13 @@ class Palette:
                     # empty groups as well as non-empty ones; we need to make the empty groups
                     # preferable when there is nothing in common.
                     score = len(set(old_palette_group).intersection(new_palette_group))*10 - len(old_palette_group)
-                    print "PQ", i, score
+                    #print "PQ", i, score
                     if best_old_palette_group_index is None or score > best_old_palette_group_score:
                         best_old_palette_group_index = i
                         best_old_palette_group_score = score
                 new_palette_group_reordered[best_old_palette_group_index] = new_palette_group
                 old_palette_indices.remove(best_old_palette_group_index)
-                print "PD", new_palette_group, old_palette_indices
+                #print "PD", new_palette_group, old_palette_indices
             new_palette = new_palette_group_reordered
         elif False:
             similarity = [[0]*4]*4
@@ -365,7 +365,7 @@ class Palette:
 
 
 
-        print "FA2", new_palette
+        #print "FA2", new_palette
 
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
@@ -505,7 +505,7 @@ class Palette:
                 # TODO: could probably tweak weightings here
                 # TODO: We are *probably* a little too keen to fill up a nearly-full palette with a colouir triple; it would be one thing if *none* of those colours were already in the palette, but if we have two of them in separate sets this feels a little bit out of order. Then again, if the frequency count says the colour triple is next in priority perhaps this is fine.
                 palette_group_score = -(changes*changes_weight + new_colours_in_group + 0.25*new_group_size)
-                print "PQ", old_palette, new_palette_copy, pending_colours
+                #print "PQ", old_palette, new_palette_copy, pending_colours
                 print "Q", palette_group, palette_group_score, changes, new_colours_in_group, new_group_size
 
                 if best_palette_group is None or palette_group_score > best_palette_group_score:
