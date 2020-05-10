@@ -16,6 +16,7 @@ import PIL.ImageFont
 import colorsys
 import copy
 import math
+import os.path
 import subprocess
 import sys
 from collections import defaultdict
@@ -586,7 +587,7 @@ def merge_hist(hist_list):
 #assert False
 
 
-window_size = 5
+window_size = 4
 palette_by_y = [None]*ysize
 for y in range(0, ysize):
     # When we get to the last few lines we will be considering fewer than window_size
@@ -637,12 +638,14 @@ for palette_group in palette_by_y[0].crystallised_palette:
         bbc_colour += 1
 
 changes_per_line = 8 # in file, not "can be done without flicker"
+stat_changes_per_line = [0]*(changes_per_line+1)
 ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 for y in range(1, ysize):
     line_changes = bytearray()
     for change in palette_actions_by_y[y]:
         line_changes += chr((change[0]<<4) | (change[1]^7))
     assert len(line_changes) <= changes_per_line
+    stat_changes_per_line[len(line_changes)] += 1
 
     # We always make all the changes, so if we aren't using the maximum number of changes
     # we must provide some safe no-op data. If we have no changes at all we copy the
@@ -733,3 +736,6 @@ with open(sys.argv[2], "wb") as bbc_image:
     bbc_image.write(nula_palette)
     bbc_image.write(ula_palette_changes)
     bbc_image.write(image_data)
+component = os.path.splitext(sys.argv[2])
+with open(component[0] + ".txt", "w") as bbc_image_txt:
+    bbc_image.write("Changes per line: %s", (stat_changes_per_line,))
