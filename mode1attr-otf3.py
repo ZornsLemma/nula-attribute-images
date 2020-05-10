@@ -587,7 +587,7 @@ def merge_hist(hist_list):
 #assert False
 
 
-window_size = 4
+window_size = 2
 palette_by_y = [None]*ysize
 for y in range(0, ysize):
     # When we get to the last few lines we will be considering fewer than window_size
@@ -738,4 +738,4 @@ with open(sys.argv[2], "wb") as bbc_image:
     bbc_image.write(image_data)
 component = os.path.splitext(sys.argv[2])
 with open(component[0] + ".txt", "w") as bbc_image_txt:
-    bbc_image.write("Changes per line: %s", (stat_changes_per_line,))
+    bbc_image_txt.write("Changes per line: %s\n" % (stat_changes_per_line,))
