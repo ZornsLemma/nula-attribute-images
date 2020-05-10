@@ -1,5 +1,6 @@
 puttext "boot.txt", "!BOOT", &0000
 putbasic "showotf.bas", "SSHOW"
+include "showotf.beebasm"
 putfile "output-otf3/IMG_20180609_1900447-cropped-240x256-16c.bbc", "JAFFA", &2fe0
 putfile "output-otf3/parrot3-240x256-16c.bbc", "PARROT", &2fe0
 putfile "output-otf3/IMG_20180720_1301471-cropped-240x256-16c.bbc", "CAR", &2fe0
