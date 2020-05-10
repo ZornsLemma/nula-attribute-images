@@ -526,13 +526,18 @@ class Palette:
             # its components (colour triples decay to colour pairs, colour pairs decay to
             # single colours) and carry on.
             new_hist = defaultdict(int)
-            for colour_set, freq in self.hist:
-                new_hist[colour_set] += freq
+            for hist_colour_set, freq in self.hist:
+                new_hist[hist_colour_set] += freq
             t = tuple(colour_set)
             f = freq / float(len(colour_set))
-            for i in range(0, len(colour_set)):
-                for j in range(i+1, len(colour_set)):
-                    new_hist[frozenset([t[i], t[j]])] += f
+            if len(colour_set) == 3:
+                new_hist[frozenset([t[0], t[1]])] += f
+                new_hist[frozenset([t[0], t[2]])] += f
+                new_hist[frozenset([t[1], t[2]])] += f
+            else:
+                assert len(colour_set) == 2
+                new_hist[frozenset([t[0]])] += f
+                new_hist[frozenset([t[1]])] += f
             self.hist = sorted(new_hist.items(), key=lambda x: x[1], reverse=True)
 
 
@@ -614,31 +619,28 @@ for original_colour in range(0, 16):
     b = p[original_colour*3+2] >> 4
     nula_palette.extend(bytearray([(g<<4) | b, (original_colour<<4) | r]))
 
-def SFTODORENAME(palette, common_palette):
-    assert len(palette) == 4
-    bbc_to_original_colour_map = []
+def SFTODORENAME(palette):
+    assert len(palette.crystallised_palette) == 4
     original_to_bbc_colour_map = defaultdict(set)
-    for i, (palette_group, common_palette_group) in enumerate(zip(palette, common_palette)):
-        assert len(palette_group) == 4
-        ordered = sorted(common_palette_group) + sorted(palette_group - common_palette_group)
-        assert len(ordered) == 4
-        bbc_to_original_colour_map.extend(ordered)
-        for j, original_colour in enumerate(ordered):
-            #print "Q", i, j, original_colour
+    bbc_colour = 0
+    for i, palette_group in enumerate(palette.crystallised_palette):
+        for j, original_colour in enumerate(palette_group):
             original_to_bbc_colour_map[original_colour].add(i*4+j)
-    return bbc_to_original_colour_map, original_to_bbc_colour_map
+    return original_to_bbc_colour_map
 
-bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[0], common_palette)
 ula_palette = bytearray()
-for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
-    ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
+print "QQQX", palette_by_y[0].crystallised_palette
+bbc_colour = 0
+for palette_group in palette_by_y[0].crystallised_palette:
+    for original_colour in palette_group:
+        ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
+        bbc_colour += 1
 
 changes_per_line = 8 # in file, not "can be done without flicker"
 ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
-previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 for y in range(1, ysize):
     line_changes = bytearray()
-    for change in palette_actions_by_y:
+    for change in palette_actions_by_y[y]:
         line_changes += chr((change[0]<<4) | (change[1]^7))
     assert len(line_changes) <= changes_per_line
 
@@ -684,11 +686,11 @@ for y_block in range(0, ysize, 8):
                 pixels = (15, 15, 15)
             else:
                 pixels = (pixel_map[x,y], pixel_map[x+1,y], pixel_map[x+2,y])
-            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette_by_y[y])
+            palette_index, adjusted_pixels = best_effort_pixel_representation(pixels, palette_by_y[y].crystallised_palette)
             pixel_map[x,y] = adjusted_pixels[0]
             pixel_map[x+1,y] = adjusted_pixels[1]
             pixel_map[x+2,y] = adjusted_pixels[2]
-            bbc_to_original_colour_map, original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y], common_palette)
+            original_to_bbc_colour_map = SFTODORENAME(palette_by_y[y])
             bbc_pixels = []
             bbc_colour_range = set(range(palette_index*4, (palette_index+1)*4))
             for original_colour in adjusted_pixels:
