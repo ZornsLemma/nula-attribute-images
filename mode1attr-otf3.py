@@ -296,8 +296,8 @@ class Palette:
         # The order of the rows in the palettes is arbitrary (we can just adjust the
         # attribute values on the pixel data as we encode it), so reorder new_palette
         # to minimise the pairwise differences.
-        #print "FA0", old_palette
-        #print "FA1", new_palette
+        print "FA0", old_palette
+        print "FA1", new_palette
         if False:
             old_palette_set = [set(palette_group) for palette_group in old_palette]
             original_new_palette = new_palette
@@ -364,12 +364,12 @@ class Palette:
 
 
 
-        #print "FA2", new_palette
+        print "FA2", new_palette
 
         # Assign an index to the elements of the palette groups in the new palette,
         # re-using the index from the old palette where possible.
-        #print "AOLD", old_palette
-        #print "ANEW", new_palette, pending_colours
+        print "AOLD", old_palette
+        print "ANEW", new_palette, pending_colours
         new_palette_list = []
         for old_palette_group, new_palette_group_set in zip(old_palette, new_palette):
             new_palette_group_list = []
@@ -390,7 +390,7 @@ class Palette:
             new_palette_list.append(new_palette_group_list)
         new_palette = new_palette_list
         new_palette_list = None
-        #print "BNEW", new_palette
+        print "BNEW", new_palette
 
         # Any remaining pending_colours need to be put into new_palette We
         # prefer putting them in emptier palette groups; this is perhaps a bit
