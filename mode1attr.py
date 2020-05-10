@@ -148,8 +148,8 @@ def visualise_palette(palette, filename):
 
 
 
-if len(sys.argv) != 3:
-    sys.stderr.write('Usage: %s INFILE OUTFILE\n' % sys.argv[0])
+if len(sys.argv) < 3 or len(sys.argv) > 4:
+    sys.stderr.write('Usage: %s INFILE OUTFILE [OUTFILESIM]\n' % sys.argv[0])
     sys.exit(1)
 
 image = PIL.Image.open(sys.argv[1])
@@ -536,4 +536,8 @@ for y_block in range(0, ysize, 8):
             bbc_image.write(chr(bbc_byte))
 
 # Save the attribute-constrained version of the image.
-image.save("z.png")
+simulated_image = image.resize((1280, 1024), resample=PIL.Image.NEAREST)
+if len(sys.argv) == 4:
+    simulated_image.save(sys.argv[3])
+else:
+    simulated_image.save("z.png")
