@@ -1,5 +1,5 @@
 #!/bin/bash
-NAME=output-static
+NAME=output-otf3
 mkdir -p $NAME
 mkdir -p $NAME-simulated
 for INPUT in input/*.png; do
@@ -7,6 +7,6 @@ for INPUT in input/*.png; do
 	OUTPUT="$NAME/$(basename $INPUT .png).bbc"
 	OUTPUTSIM="$NAME-simulated/$(basename $INPUT .png).png"
 	if [ ! -f "$OUTPUT" ]; then
-		python mode1attr.py "$INPUT" "$OUTPUT" "$OUTPUTSIM"
+		python mode1attr-otf3.py "$INPUT" "$OUTPUT" "$OUTPUTSIM"
 	fi
 done

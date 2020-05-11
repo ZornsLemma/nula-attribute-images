@@ -1,0 +1,166 @@
+org &900
+sm_im=1
+IntCA1=2
+SysIntVSync=IntCA1
+SystemVIA=&FE40
+ViaIFR=13
+SysViaIFR=SystemVIA+ViaIFR
+CrtcReg=&FE00
+CrtcVal=&FE01
+CrtcR1HorizontalDisplayed=1
+CrtcR2HorizontalSyncPosition=2
+CrtcR3SyncPulseWidths=3
+ulapal=&FE21
+nulapal=&FE23
+pal=&3000-&800
+init_nula_pal=pal-32
+init_ula_pal=init_nula_pal-16
+change_nula_palette=FALSE
+
+if change_nula_palette
+    updatepal = nulapal
+    fixedpal  = ulapal
+else
+    updatepal = ulapal
+    fixedpal  = nulapal
+endif
+
+\ TODO: I don't like the similiarity in the names of these macros and the label
+\ they copy the data from, but all the labels could probably do with tidying
+\ later on anyway.
+
+macro init_ula_palette
+        \ X=16-31 is garbage data, but we'll program with correct data afterwards
+        \ and by doing it this way the timing is the same as init_nula_palette.
+        ldx #31
+.loop
+        lda init_ula_pal,x
+        sta ulapal
+        dex
+        bpl loop
+endmacro
+
+macro init_nula_palette
+        ldx #31
+.loop
+        lda init_nula_pal,x
+        sta nulapal
+        dex
+        bpl loop
+endmacro
+
+
+.start
+        sei
+
+        \ TODO: It would probably be useful to take the A value (&50) here from within
+        \ the loaded image - this would probably allow reduced-width images to be loaded
+        \ as in tricky's slideshow, and it wouldn't really cost much even if we didn't
+        \ actually use it. There's space in the line 0 palette for all sorts of data.
+        ldx #CrtcR1HorizontalDisplayed    : stx CrtcReg
+        lda #&50                          : sta CrtcVal
+        ldx #CrtcR2HorizontalSyncPosition : stx CrtcReg
+        lsr A : adc #98-40                : sta CrtcVal
+        ldx #CrtcR3SyncPulseWidths        : stx CrtcReg
+        lda #&29                          : sta CrtcVal ; because tricky's LCD doesn't sync with &28!
+
+        \ We initialise both the ULA palette and VideoNuLA auxiliary palette. At
+        \ the moment one of these is going to be initialised at the start of
+        \ every frame anyway, but it's still harmless to do it here, and if we
+        \ start doing a mix of ULA and VideoNuLA palette updates on each scan
+        \ line it will be important to have initialised everything here.
+        init_ula_palette
+        init_nula_palette
+
+.loop
+
+        \ Wait for VSYNC
+        lda #SysIntVSync
+        sta SysViaIFR
+.wait_vsync
+        bit SysViaIFR
+        beq wait_vsync
+
+        \ Load the initial palette to start the frame
+        if change_nula_palette
+            init_nula_palette
+        else
+            init_ula_palette
+        endif
+
+        \ Wait out line Y=0
+{
+        ldx #234
+.waitt
+        pha : pla : pha : pla
+        dex
+        bne waitt
+        pha : pla
+        nop
+}
+
+        \ Do lines Y=1-255
+        ldy #1
+.next_line
+
+        \ Get ready for the time-critical bit to come.
+        \ 60 cycles in this block
+        lda pal+&000,y : sta update0+sm_im \ 8 cycles
+        lda pal+&100,y : sta update1+sm_im \ 8 cycles
+        lda pal+&200,y : sta update2+sm_im \ 8 cycles
+        lda pal+&300,y : sta update3+sm_im \ 8 cycles
+        lda pal+&400,y : sta update4+sm_im \ 8 cycles
+        lda pal+&500,y : sta update5+sm_im \ 8 cycles
+        lda pal+&600,y : sta update6+sm_im \ 8 cycles
+        ldx pal+&700,y                   \ 4 cycles
+
+        \ These updates have to occur within the 48 cycles of the horizontal blanking
+        \ interval to avoid twinkling. We have 46 cycles here, and the first two are
+        \ not actually touching hardware so we do all the critical stuff in 44 cycles.
+.update0
+        lda #0 : sta updatepal \ 6 cycles
+.update1
+        lda #0 : sta updatepal \ 6 cycles
+.update2
+        lda #0 : sta updatepal \ 6 cycles
+.update3
+        lda #0 : sta updatepal \ 6 cycles
+.update4
+        lda #0 : sta updatepal \ 6 cycles
+.update5
+        lda #0 : sta updatepal \ 6 cycles
+.update6
+        lda #0 : sta updatepal \ 6 cycles
+.update7
+        stx updatepal        \ 4 cycles
+
+        \ We need to take 128 cycles per line. We've had 60+46 so far and the
+        \ code at foo below will take 5 cycles, so we need to burn 128-60-46-5=17
+        \ cycles.
+	\ TODO: We could use Y - we almost certainly have time to save and restore
+	\ it instead of some of these nops - to hold one of the palette updates.
+	\ That would allow us to save 2 cycles during the palette updates, bringing
+	\ it down to 42 cycles. If it's possible to use the advanced "stable raster"
+	\ techniques to avoid the cycle stretching uncertainty, that would give us
+	\ an extra 6 cycles in the 48 cycle HBI so we could maybe do *9* updates
+	\ per line.
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        nop     \ 2 cycles
+        and &70 \ 3 cycles
+.foo
+
+        iny : bne next_line \ 5 cycles if taken assuming no page crossing
+        inc &80 : beq maybe
+        jmp loop
+.maybe
+        inc &81 : beq done
+        jmp loop
+.done
+        rts
+
+save "CODE", start, P%
