@@ -1,0 +1,2 @@
+tricky for original palette changing code
+simondotm for exomizer code (https://github.com/bitshifters/bbc-nula), also whoever wrote the original version of that before simondotm "ported" it - would need to check upstream, there are a few decoders

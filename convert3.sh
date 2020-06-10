@@ -2,7 +2,7 @@
 NAME=output-otf3
 mkdir -p $NAME
 mkdir -p $NAME-simulated
-for INPUT in input/*.png; do
+for INPUT in input/*16c.png; do
 	echo "$INPUT"
 	OUTPUT="$NAME/$(basename $INPUT .png).bbc"
 	OUTPUTSIM="$NAME-simulated/$(basename $INPUT .png).png"

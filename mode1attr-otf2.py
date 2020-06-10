@@ -32,7 +32,7 @@ def image_palette_rgb(colour):
 
 def distance(a, b):
     # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
-    #return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
     a_hsv = hsv_from_rgb(a)
     b_hsv = hsv_from_rgb(b)
     h_dist = abs(a_hsv[0] - b_hsv[0])
@@ -451,7 +451,7 @@ ula_palette = bytearray()
 for bbc_colour, original_colour in enumerate(bbc_to_original_colour_map):
     ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
 
-changes_per_line = 8 # in file, not "can be done without flicker"
+changes_per_line = 8 # in file, not "can be done without flicker" TODO: bit misnamed now
 ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 previous_bbc_to_original_colour_map = bbc_to_original_colour_map
 for y in range(1, ysize):
@@ -485,6 +485,11 @@ for y in range(1, ysize):
             line_changes += chr(line_changes[-1])
     assert len(line_changes) == changes_per_line
     ula_palette_changes.extend(line_changes)
+changes_per_line = 9 # TODO: bit of a nasty hack
+adjusted_ula_palette_changes = bytearray()
+for i in range(0, ysize):
+    adjusted_ula_palette_changes += ula_palette_changes[i*8:(i+1)*8] + chr(0x21)
+ula_palette_changes = adjusted_ula_palette_changes
 assert len(ula_palette_changes) == ysize * changes_per_line
 with open('zrawchange', 'wb') as f:
     f.write(ula_palette_changes)
@@ -494,6 +499,7 @@ def interleave_changes(raw_changes):
         for i in range(0, changes_per_line):
             interleaved_changes[y+i*256] = raw_changes[y*changes_per_line+i]
     return interleaved_changes
+ula_palette_changes[0] = 8 # 8 ULA changes per line (0 NuLA changes)
 ula_palette_changes = interleave_changes(ula_palette_changes)
 
 

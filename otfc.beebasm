@@ -1,0 +1,16 @@
+puttext "boot.txt", "!BOOT", &0000
+putbasic "showotf.bas", "SSHOW"
+include "showotf.beebasm"
+putfile "output-otfc/IMG_20180609_1900447-cropped2-240x256-64c.bbc.exo", "JAFFA", &0000
+putfile "output-otfc/parrot3-240x256-64c.bbc.exo", "PARROT", &0000
+putfile "output-otfc/IMG_20180720_1301471-cropped2-240x256-64c.bbc.exo", "CAR", &0000
+; putfile "output-otfc/IMG_20190311_1003577-cropped-saturated-240x256-32c.bbc.exo", "PIZZA", &0000
+putfile "output-otfc/CIMG09707-saturated2-240x256-64c.bbc.exo", "TOWER", &0000
+; putfile "output-otfc/IMG_20190208_1612239-cropped-240x256-32c.bbc.exo", "THING", &0000
+putfile "output-otfc/IMG_0821-240x256-64c.bbc.exo", "BEACH", &0000
+putfile "output-otfc/CIMG05465-240x256-48c.bbc.exo", "ROCKS", &0000
+putfile "output-otfc/IMG_08419-240x256-64c.bbc.exo", "PLAZA", &0000
+putfile "output-otfc/CIMG05573-240x256-64c.bbc.exo", "DESERT", &0000
+putfile "output-otfc/CIMG0900-240x256-48c.bbc.exo", "BEER", &0000
+putfile "output-otfc/IMG_11526-240x256-64c.bbc.exo", "TRAIN", &0000
+putfile "output-otfc/CIMG05640-240x256-64c.bbc.exo", "SUNSET", &0000

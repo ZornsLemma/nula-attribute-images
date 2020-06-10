@@ -1,0 +1,24 @@
+parrot3 - works quite well
+IMG_08419-240x256-16c.png - not too bad
+CIMG0900-240x256-16c.png - not too bad
+CIMG05465-240x256-16c.png - works quite well
+CIMG05573-240x256-16c.png - fairly good
+IMAG0315-240x256-16c.png - not terrible, bit crappy
+IMAG0377-240x256-16c.png - not too bad
+IMG_0001-240x256-16c.png - not too bad
+IMG_0905-240x256-16c.png - not too bad
+IMG_7561-240x256-16c.png - not too bad
+CIMG05640-240x256-16c.png - not too bad
+IMG_20180609_1900447-cropped-240x256-16c.png - pretty good
+IMG_20190311_1003577-cropped-saturated-240x256-16c.png - pretty good
+CIMG09196-240x256-16c.png - not terrible, bit crappy
+CIMG09707-240x256-16c.png - pretty good, probably worth trying dither with the no banding option in gimp
+IMG_0821-240x256-16c.png - not too bad
+IMG_11233-cropped-240x256-16c.png - not sure, colourful, perhaps a bit of a mess
+IMG_20180720_1301471-cropped-240x256-16c.png - pretty good
+IMG_20190208_1612239-cropped-240x256-16c.png - pretty good
+
+
+
+CIMG0900 48c - crude optimise suggests serpentine, max-aux=3 is best
+CIMG0900 32c - crude optimise suggets non-sepentine, max-aux=4 is best

@@ -31,7 +31,7 @@ def image_palette_rgb(colour):
 
 def distance(a, b):
     # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
-    #return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
     a_hsv = hsv_from_rgb(a)
     b_hsv = hsv_from_rgb(b)
     h_dist = abs(a_hsv[0] - b_hsv[0])

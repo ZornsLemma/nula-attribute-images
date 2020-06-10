@@ -33,7 +33,7 @@ def image_palette_rgb(colour):
 
 def distance(a, b):
     # TODO: Do we need to bother taking square root here? We *might* for clustering purposes
-    #return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    return math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
     a_hsv = hsv_from_rgb(a)
     b_hsv = hsv_from_rgb(b)
     h_dist = abs(a_hsv[0] - b_hsv[0])
@@ -472,8 +472,8 @@ class Palette:
             # its components (colour triples decay to colour pairs, colour pairs decay to
             # single colours) and carry on.
             new_hist = defaultdict(int)
-            for hist_colour_set, freq in self.hist:
-                new_hist[hist_colour_set] += freq
+            for hist_colour_set, copy_freq in self.hist:
+                new_hist[hist_colour_set] += copy_freq
             t = tuple(colour_set)
             f = freq / float(len(colour_set))
             if len(colour_set) == 3:
@@ -582,7 +582,7 @@ for palette_group in palette_by_y[0].crystallised_palette:
         ula_palette += chr((bbc_colour<<4) | (original_colour ^ 7))
         bbc_colour += 1
 
-changes_per_line = 8 # in file, not "can be done without flicker"
+changes_per_line = 8 # in file, not "can be done without flicker" TODO: bit misnamed now
 stat_changes_per_line = [0]*(changes_per_line+1)
 ula_palette_changes = bytearray(ula_palette[0:changes_per_line]) # line 0, won't be read but we use "realistic" data so we can copy from it to subsequent lines safely
 for y in range(1, ysize):
@@ -602,6 +602,11 @@ for y in range(1, ysize):
             line_changes += chr(line_changes[-1])
     assert len(line_changes) == changes_per_line
     ula_palette_changes.extend(line_changes)
+changes_per_line = 10 # TODO: bit of a nasty hack
+adjusted_ula_palette_changes = bytearray()
+for i in range(0, ysize):
+    adjusted_ula_palette_changes += chr(0x00) + ula_palette_changes[i*8:(i+1)*8] + chr(0x21)
+ula_palette_changes = adjusted_ula_palette_changes
 assert len(ula_palette_changes) == ysize * changes_per_line
 with open('zrawchange', 'wb') as f:
     f.write(ula_palette_changes)
@@ -611,6 +616,7 @@ def interleave_changes(raw_changes):
         for i in range(0, changes_per_line):
             interleaved_changes[y+i*256] = raw_changes[y*changes_per_line+i]
     return interleaved_changes
+ula_palette_changes[0] = 8 # 8 ULA changes per line (0 NuLA changes)
 ula_palette_changes = interleave_changes(ula_palette_changes)
 
 
@@ -667,6 +673,8 @@ for y_block in range(0, ysize, 8):
 
 # Save the attribute-constrained version of the image.
 simulated_image = image.resize((1280, 1024), resample=PIL.Image.NEAREST)
+p = simulated_image.getpalette()
+simulated_image.putpalette(list((x >> 4) * 0x11 for x in p))
 if len(sys.argv) == 4:
     simulated_image.save(sys.argv[3])
 else:

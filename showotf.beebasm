@@ -1,38 +1,49 @@
+org &70
+guard &80
+include "exomizer.h.beebasm"
+
 org &900
+\ This will overflow into the function key buffer on a B/B+, but showotf.bas
+\ installs a handler with *FX24[789] which zeroes the function key buffer before
+\ it can have any effect, so that's OK. Using this memory will potentially cause
+\ problems using NFS on a Master, but I haven't tested that; otherwise it should
+\ be fine.
+guard &c00
 sm_im=1
+sm_lo=1
+sm_hi=2
 IntCA1=2
 SysIntVSync=IntCA1
 SystemVIA=&FE40
 ViaIFR=13
 SysViaIFR=SystemVIA+ViaIFR
+jmp_opcode=&4c
 CrtcReg=&FE00
 CrtcVal=&FE01
 CrtcR1HorizontalDisplayed=1
 CrtcR2HorizontalSyncPosition=2
 CrtcR3SyncPulseWidths=3
 ulapal=&FE21
+nulacontrol=&FE22
 nulapal=&FE23
-pal=&3000-&800
+dummypal=&FE00 \ only high byte matters
+osbyte=&FFF4
+pal=&3000-&A00
 init_nula_pal=pal-32
 init_ula_pal=init_nula_pal-16
-change_nula_palette=FALSE
-
-if change_nula_palette
-    updatepal = nulapal
-    fixedpal  = ulapal
-else
-    updatepal = ulapal
-    fixedpal  = nulapal
-endif
+image_start=init_ula_pal
+\ Some miscellaneous data is stored in the otherwise unused 8 bytes for line 0
+\ in pal. Remember this is interleaved if extending to more than one byte of
+\ miscellaneous data!
+ula_changes_per_line=pal
 
 \ TODO: I don't like the similiarity in the names of these macros and the label
 \ they copy the data from, but all the labels could probably do with tidying
-\ later on anyway.
+\ later on anyway. We also don't need them as macros any more, they are only
+\ used once.
 
 macro init_ula_palette
-        \ X=16-31 is garbage data, but we'll program with correct data afterwards
-        \ and by doing it this way the timing is the same as init_nula_palette.
-        ldx #31
+        ldx #15
 .loop
         lda init_ula_pal,x
         sta ulapal
@@ -53,6 +64,10 @@ endmacro
 .start
         sei
 
+        \ We could do this inline, but having it here makes it easier to keep the critical code
+        \ on a single page.
+        jsr init
+
         \ TODO: It would probably be useful to take the A value (&50) here from within
         \ the loaded image - this would probably allow reduced-width images to be loaded
         \ as in tricky's slideshow, and it wouldn't really cost much even if we didn't
@@ -64,13 +79,73 @@ endmacro
         ldx #CrtcR3SyncPulseWidths        : stx CrtcReg
         lda #&29                          : sta CrtcVal ; because tricky's LCD doesn't sync with &28!
 
-        \ We initialise both the ULA palette and VideoNuLA auxiliary palette. At
-        \ the moment one of these is going to be initialised at the start of
-        \ every frame anyway, but it's still harmless to do it here, and if we
-        \ start doing a mix of ULA and VideoNuLA palette updates on each scan
-        \ line it will be important to have initialised everything here.
-        init_ula_palette
-        init_nula_palette
+{
+        \ Patch the hardware updates in the scan line loop to do the correct mix
+        \ of ULA palette and VideoNuLA auxiliary palette updates for this image.
+        lda #lo(nulapal)
+        ldy ula_changes_per_line
+        cpy #8 : beq no_nula_changes
+.patch_loop1
+        ldx patch_table,y
+        sta patch_base,x
+        iny
+        cpy #8 : bne patch_loop1
+.no_nula_changes
+
+        \ TODO: ula_changes_per_line probably can't be zero any more, because
+        \ we have nine total writes and since an auxiliary palette write takes two
+        \ writes we must have at least one ULA write.
+        ldy ula_changes_per_line : beq no_ula_changes
+
+        \ The write we do at early_update during the displayed part of the line
+        \ can only be the first half of an auxiliary palette write. If we want
+        \ 8 ULA palette writes per line, we need to turn early_update into a
+        \ dummy write.
+        lda #hi(nulapal)
+        cpy #8 : bne use_early_update
+        lda #&e0 \ &e023 is a harmless ROM address on all machines
+.use_early_update
+        sta early_update+sm_hi
+        
+        lda #lo(ulapal)
+.patch_loop2
+        ldx patch_table-1,y
+        sta patch_base,x
+        dey
+        bne patch_loop2
+.no_ula_changes
+}
+
+{
+        \ Patch the pre-setup for the hardware updates in the scan line loop
+        \ to adjust the appropriate writes between ULA palette and VideoNuLA
+        \ auxiliary palette. (If ula_changes_per_line is >=7, we would index
+        \ off the end of patch_table here. The dynamic updates are of no use,
+        \ but we want to do them anyway for consistency, so make them adjust
+        \ updates 6 and 7 instead.)
+        \ TODO: It's "sensible" but not currently possible to have
+        \ ula_changes_per_line == 7 *and* allow borrowing of the two remaining
+        \ auxiliary palette writes dynamically. In principle if this code were
+        \ cleverer we could allow this; code would have to make sure to perform
+        \ a "harmless" (reprogram a value we already know is programmed) write
+        \ for the first one which occurs at early_update during the displayed
+        \ line, but the other one could be used. (I'm assuming such a write
+        \ would be harmless; if it isn't then we probably can't allow dynamic
+        \ adjustment in this case, as we don't have the cycles spare to patch
+        \ two different addresses.)
+        ldy ula_changes_per_line
+        cpy #7:bcc no_adjust_required
+        ldy #6
+.no_adjust_required
+        lda #lo(patch_base)
+        clc
+        adc patch_table,y
+        sta dynamic_update0+sm_lo
+        lda #lo(patch_base)
+        clc
+        adc patch_table+1,y
+        sta dynamic_update1+sm_lo
+}
 
 .loop
 
@@ -81,80 +156,96 @@ endmacro
         bit SysViaIFR
         beq wait_vsync
 
-        \ Load the initial palette to start the frame
-        if change_nula_palette
-            init_nula_palette
-        else
-            init_ula_palette
-        endif
+        \ Load the initial palettes to start the frame. We do both because we
+        \ may be modifying both palettes on each scan line.
+        init_ula_palette
+        init_nula_palette
 
         \ Wait out line Y=0
 {
-        ldx #234
+        ldx #222
 .waitt
         pha : pla : pha : pla
         dex
         bne waitt
         pha : pla
+        nop : nop
+        \ The following nop was added to fix slight flickering at the right
+        \ hand end of some lines with the 32 colour slideshow (on a Master
+        \ 128, FWIW). Timing is obviously very important here and I need to be
+        \ careful to preserve exact timing if I make any further tweaks. It
+        \ is *possible* one extra cycle would have fixed that flickering -
+        \ this hasn't been tested - so if there are reports of flickering
+        \ on the left hand side it might be worth trying that here instead
+        \ of the following nop (i.e. delete the following nop and replace
+        \ the previous one with lda &70 or similar).
         nop
 }
 
         \ Do lines Y=1-255
         ldy #1
+
+        \ We need the next_line loop to take 128 cycles: 60+12+3+48+5=128
 .next_line
 
-        \ Get ready for the time-critical bit to come.
+        \ Get ready for the time-critical bit to come. The first write is
+        \ direct to hardware but because it's the first byte of a two-byte write
+        \ to the VideoNuLA auxiliary palette, it won't have any effect until the
+        \ second byte is written and therefore it won't cause visible glitches
+        \ even though we do it during the displayed part of the line.
         \ 60 cycles in this block
-        lda pal+&000,y : sta update0+sm_im \ 8 cycles
-        lda pal+&100,y : sta update1+sm_im \ 8 cycles
-        lda pal+&200,y : sta update2+sm_im \ 8 cycles
-        lda pal+&300,y : sta update3+sm_im \ 8 cycles
-        lda pal+&400,y : sta update4+sm_im \ 8 cycles
-        lda pal+&500,y : sta update5+sm_im \ 8 cycles
-        lda pal+&600,y : sta update6+sm_im \ 8 cycles
-        ldx pal+&700,y                   \ 4 cycles
+        lda pal+&000,y                     \ 4 cycles
+.early_update
+                         sta nulapal       \ 4 cycles
+        lda pal+&200,y : sta update1+sm_im \ 8 cycles
+        lda pal+&300,y : sta update2+sm_im \ 8 cycles
+        lda pal+&400,y : sta update3+sm_im \ 8 cycles
+        lda pal+&500,y : sta update4+sm_im \ 8 cycles
+        lda pal+&600,y : sta update5+sm_im \ 8 cycles
+        lda pal+&700,y : sta update6+sm_im \ 8 cycles
+        ldx pal+&800,y                     \ 4 cycles
 
-        \ These updates have to occur within the 48 cycles of the horizontal blanking
-        \ interval to avoid twinkling. We have 46 cycles here, and the first two are
-        \ not actually touching hardware so we do all the critical stuff in 44 cycles.
-.update0
-        lda #0 : sta updatepal \ 6 cycles
-.update1
-        lda #0 : sta updatepal \ 6 cycles
-.update2
-        lda #0 : sta updatepal \ 6 cycles
-.update3
-        lda #0 : sta updatepal \ 6 cycles
-.update4
-        lda #0 : sta updatepal \ 6 cycles
-.update5
-        lda #0 : sta updatepal \ 6 cycles
-.update6
-        lda #0 : sta updatepal \ 6 cycles
-.update7
-        stx updatepal        \ 4 cycles
+        \ Allow two of the updates to be dynamically switched between the ULA
+        \ palette and the VideoNuLA auxiliary palette.
+        \ 12 cycles in this block
+        lda pal+&900,y \ 4 cycles
+.dynamic_update0
+        sta patch_base \ 4 cycles
+.dynamic_update1
+        sta patch_base \ 4 cycles
 
-        \ We need to take 128 cycles per line. We've had 60+46 so far and the
-        \ code at foo below will take 5 cycles, so we need to burn 128-60-46-5=17
-        \ cycles.
-	\ TODO: We could use Y - we almost certainly have time to save and restore
-	\ it instead of some of these nops - to hold one of the palette updates.
-	\ That would allow us to save 2 cycles during the palette updates, bringing
-	\ it down to 42 cycles. If it's possible to use the advanced "stable raster"
-	\ techniques to avoid the cycle stretching uncertainty, that would give us
-	\ an extra 6 cycles in the 48 cycle HBI so we could maybe do *9* updates
-	\ per line.
-        nop     \ 2 cycles
-        nop     \ 2 cycles
-        nop     \ 2 cycles
-        nop     \ 2 cycles
-        nop     \ 2 cycles
-        nop     \ 2 cycles
-        nop     \ 2 cycles
+        \ Just burn 3 cycles
         and &70 \ 3 cycles
-.foo
+
+        \ We have 48 cycles here. The first four cycles don't touch hardware,
+        \ so we are doing all the hardware writes within a 44 cycle window. The
+        \ horizontal blanking interval is 48 cycles, so we have some slack to
+        \ accommodate any jitter.
+        \ TODO: If we ditched the ability to switch two writes between the
+        \ different palettes and used the advanced stable raster techniques,
+        \ we could probably use Y to hold one of the values to write and cram
+        \ 9 hardware writes into the precise 48 cycles of the horizontal
+        \ blanking interval.
+.patch_base
+.update0
+        lda pal+&100,y : sta dummypal \ 8 cycles
+.update1
+        lda #0         : sta dummypal \ 6 cycles
+.update2
+        lda #0         : sta dummypal \ 6 cycles
+.update3
+        lda #0         : sta dummypal \ 6 cycles
+.update4
+        lda #0         : sta dummypal \ 6 cycles
+.update5
+        lda #0         : sta dummypal \ 6 cycles
+.update6
+        lda #0         : sta dummypal \ 6 cycles
+.update7
+                         stx dummypal \ 4 cycles
 
         iny : bne next_line \ 5 cycles if taken assuming no page crossing
+        assert hi(P%) == hi(next_line)
         inc &80 : beq maybe
         jmp loop
 .maybe
@@ -162,5 +253,47 @@ endmacro
         jmp loop
 .done
         rts
+
+.patch_table
+        equb update7 - patch_base + 1
+        equb update6 - patch_base + 3
+        equb update5 - patch_base + 3
+        equb update4 - patch_base + 3
+        equb update3 - patch_base + 3
+        equb update2 - patch_base + 3
+        equb update1 - patch_base + 3
+        equb update0 - patch_base + 4
+
+.init
+{
+        \ Decompress the image
+        \ TODO: Might be nice to do all the shadow RAM and sideways RAM etc stuff in bitshifters
+        \ code, but let's keep it simple for now.
+        \ TODO: Might be nice to be second processor compatible and allow decompression to occur
+        \ on the second processor for speed.
+        decompress_to = image_start-&100
+        ldx &84:ldy &85:jsr exo_init_decruncher
+        ldx #lo(decompress_to):ldy #hi(decompress_to):jsr exo_unpack
+        lda #&7e
+        sta relocate_addr0+2
+        lda #&7f
+        sta relocate_addr1+2
+        ldx #0
+.relocate_loop
+.relocate_addr0
+        lda &ff00,x
+.relocate_addr1
+        sta &ff00,x
+        inx
+        bne relocate_loop
+        dec relocate_addr0+2
+        dec relocate_addr1+2
+        lda relocate_addr1+2
+        cmp #hi(decompress_to)-2
+        bne relocate_loop
+        rts
+}
+
+include "exomizer.beebasm"
 
 save "CODE", start, P%
